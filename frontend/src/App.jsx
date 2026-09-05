@@ -68,8 +68,8 @@ const GALLERY = [
   {
     title: 'Tailored Ankara 2-Piece',
     tag: 'Ankara',
-    desc: 'Modern geometric Ankara buttoned shirt and slim-fit trousers sewn cleanly to your exact measurements.',
-    image: '/images/ankara_modern.jpg',
+    desc: 'Bespoke matching emerald and gold geometric Ankara long-sleeve tunic and slim-cut trousers sewn to your exact fit.',
+    image: '/images/ankara_set.jpg',
   },
   {
     title: 'Grand Velvet Agbada',
