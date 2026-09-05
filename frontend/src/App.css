@@ -21,18 +21,79 @@
 
 /* ---- Navigation Bar ---- */
 .nav {
-  position: sticky;
+  position: fixed;
   top: 16px;
-  z-index: 50;
-  margin-top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(1200px, calc(100% - 32px));
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 24px;
+  padding: 14px 28px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid var(--glass-border);
-  box-shadow: 0 8px 25px rgba(35, 28, 22, 0.05);
+  background: rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 16px 35px -10px rgba(35, 28, 22, 0.08), 0 0 0 1px rgba(212, 196, 176, 0.35);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nav.nav--has-banner {
+  top: 56px;
+}
+
+/* Designer Storefront Atelier Banner */
+.designer-atelier-banner {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(1200px, calc(100% - 32px));
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 24px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  background: rgba(250, 247, 242, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(179, 112, 42, 0.25);
+  box-shadow: 0 4px 15px rgba(35, 28, 22, 0.05);
+}
+
+.designer-atelier-banner__content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--espresso);
+}
+
+.designer-atelier-banner__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--cognac);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+.designer-atelier-banner__link {
+  color: var(--cognac);
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.82rem;
+  transition: opacity 0.2s;
+}
+
+.designer-atelier-banner__link:hover {
+  text-decoration: underline;
 }
 
 .nav__brand {
@@ -145,17 +206,69 @@
 
 /* ---- Hero Section ---- */
 .hero {
-  padding: 90px 12px 60px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 32px;
+  margin-top: 100px;
+  padding: 72px 48px 64px;
   display: grid;
   grid-template-columns: 1.15fr 0.85fr;
-  gap: 50px;
+  gap: 48px;
   align-items: center;
+  border: 1px solid var(--ivory-border-strong);
+  box-shadow: 0 24px 50px -18px rgba(35, 28, 22, 0.07);
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.designer-atelier-banner ~ .hero {
+  margin-top: 140px;
+}
+
+/* Background video container */
+.hero__video-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 32px;
+}
+
+.hero__video-element {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  opacity: 0.38;
+  filter: saturate(1.15) contrast(1.05);
+}
+
+.hero__video-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(250, 247, 242, 0.95) 0%,
+    rgba(250, 247, 242, 0.76) 52%,
+    rgba(250, 247, 242, 0.92) 100%
+  );
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.hero__content {
+  position: relative;
+  z-index: 2;
 }
 
 @media (max-width: 960px) {
   .hero {
     grid-template-columns: 1fr;
-    padding-top: 50px;
+    padding: 44px 24px 36px;
+    margin-top: 86px;
+    gap: 36px;
   }
 }
 
@@ -208,13 +321,17 @@
 /* Hero Spotlight Preview Card */
 .hero__card {
   position: relative;
+  z-index: 2;
   overflow: hidden;
   padding: 22px;
   display: flex;
   flex-direction: column;
   gap: 18px;
   border: 1px solid var(--ivory-border-strong);
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 24px;
 }
 
 .hero__card-image-wrap {

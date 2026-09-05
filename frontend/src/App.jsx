@@ -133,7 +133,7 @@ function Marquee() {
 
 function Nav({ activeDesigner, loggedInDesigner, onOrderClick, onDesignerPortalClick }) {
   return (
-    <header className="nav glass">
+    <header className={`nav glass ${activeDesigner ? 'nav--has-banner' : ''}`}>
       <div className="nav__brand">
         <a href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
           <span className="nav__logo-mark">✦</span>
@@ -170,11 +170,13 @@ function Nav({ activeDesigner, loggedInDesigner, onOrderClick, onDesignerPortalC
 function Hero({ activeDesigner, onOrderClick, onRegisterClick }) {
   const brandSub = activeDesigner
     ? activeDesigner.bio ||
-      `Welcome to ${activeDesigner.brand_name}! Order native wear sewn to your exact size. Our smart assistant helps you pick your style, records your size, and notifies the tailor on WhatsApp.`
+    `Welcome to ${activeDesigner.brand_name}! Order native wear sewn to your exact size. Our smart assistant helps you pick your style, records your size, and notifies the tailor on WhatsApp.`
     : 'Get clothes sewn to your exact body size — without any stress. Choose your style, save your size, and get it delivered to your home or pick it up at the shop.';
 
   return (
     <section className="hero">
+
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
