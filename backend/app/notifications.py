@@ -293,7 +293,7 @@ def send_whatsapp_cloud_notification(to_phone: str, body: str) -> Tuple[bool, st
 def notify_new_order(customer_name: str, phone: str, order: dict, designer: Optional[Any] = None) -> dict:
     """
     Main dispatch function called whenever a client confirms an order with the AI concierge.
-    Sends WhatsApp push & Email to the specific designer or default atelier.
+    Sends WhatsApp push & Email to the specific designer, plus customer confirmation if configured.
     """
     designer_name = getattr(designer, "brand_name", None) if designer else None
     target_whatsapp = getattr(designer, "phone", None) if designer else os.environ.get("DESIGNER_PHONE")
@@ -305,6 +305,23 @@ def notify_new_order(customer_name: str, phone: str, order: dict, designer: Opti
     sent_whatsapp, wa_status = False, "Not configured"
     if target_whatsapp:
         sent_whatsapp, wa_status = send_whatsapp_cloud_notification(target_whatsapp, plain_body)
+
+    # Also attempt sending confirmation to customer's WhatsApp if different from designer
+    customer_wa_status = "Not attempted"
+    clean_cust_phone = clean_phone_for_whatsapp(phone)
+    clean_target_phone = clean_phone_for_whatsapp(target_whatsapp) if target_whatsapp else ""
+    if clean_cust_phone and clean_cust_phone != clean_target_phone:
+        customer_msg = (
+            f"✦ *ORDER CONFIRMED - {designer_name or 'IFashion Atelier'}* ✦\n\n"
+            f"Hello {customer_name},\n"
+            f"Your bespoke order has been successfully received!\n\n"
+            f"• Style: {order.get('style', 'Bespoke native')}\n"
+            f"• Color: {order.get('color', '-')}\n"
+            f"• Target Date: {order.get('deadline', '-')}\n"
+            f"• Fulfillment: {'Courier Dispatch' if order.get('delivery_method') == 'delivery' else 'Atelier Pickup'}\n\n"
+            f"We are preparing your order. For any questions, you can reply directly to this number."
+        )
+        _, customer_wa_status = send_whatsapp_cloud_notification(clean_cust_phone, customer_msg)
 
     sent_email, email_status = False, "Not configured"
     if target_email:
@@ -319,12 +336,20 @@ def notify_new_order(customer_name: str, phone: str, order: dict, designer: Opti
     clean_wa = clean_phone_for_whatsapp(phone)
     direct_chat_link = f"https://wa.me/{clean_wa}" if clean_wa else None
 
+    # Clarify Meta Error 190 in logs
+    if "190" in str(wa_status):
+        wa_status_display = f"FAILED: Meta Access Token Expired (Error 190). Generate a new token at developers.facebook.com"
+    else:
+        wa_status_display = "SENT" if sent_whatsapp else f"FAILED ({wa_status})"
+
     # Always log comprehensive diagnostics to the terminal
     print("\n" + "=" * 60)
     print("[IFASHION NOTIFICATION ENGINE] Automated Order Alert")
     print(f"Designer: {designer_name or 'Default Atelier'}")
-    print(f"WhatsApp Push Target: {target_whatsapp} -> {'SENT' if sent_whatsapp else f'FAILED ({wa_status})'}")
-    print(f"Email Push Target:    {target_email} -> {'SENT' if sent_email else f'FAILED ({email_status})'}")
+    print(f"Designer WhatsApp ({target_whatsapp}): {wa_status_display}")
+    if clean_cust_phone != clean_target_phone:
+        print(f"Customer WhatsApp ({clean_cust_phone}): {customer_wa_status}")
+    print(f"Email Push Target ({target_email}): {'SENT' if sent_email else f'FAILED ({email_status})'}")
     if direct_chat_link:
         print(f"Direct Customer WhatsApp Link: {direct_chat_link}")
     print("-" * 60)
@@ -334,6 +359,7 @@ def notify_new_order(customer_name: str, phone: str, order: dict, designer: Opti
     return {
         "whatsapp_sent": sent_whatsapp,
         "whatsapp_status": wa_status,
+        "customer_whatsapp_status": customer_wa_status,
         "email_sent": sent_email,
         "email_status": email_status,
         "direct_whatsapp_link": direct_chat_link,

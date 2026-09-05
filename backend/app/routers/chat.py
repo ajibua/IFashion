@@ -61,10 +61,31 @@ Only include fields in "extracted" that you actually know.
 """
 
 
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="google.genai")
+
+_genai_client = None
+
+
+def get_genai_client(api_key: str):
+    global _genai_client
+    if _genai_client is None:
+        try:
+            from google import genai
+            _genai_client = genai.Client(api_key=api_key)
+        except Exception:
+            return None
+    return _genai_client
+
+
 def call_gemini(system_prompt: str, history: list[dict], known_customer: dict | None) -> dict:
     """
     Calls the Gemini API to power the multi-tenant bespoke concierge.
-    Uses google-genai SDK with HTTPX REST fallback.
+    Optimized for sub-2-second latency:
+    - system_instruction: passed natively in model config for prompt caching.
+    - thinking_budget=0: bypasses deep chain-of-thought delay.
+    - response_mime_type="application/json": structured JSON response directly.
+    - Client caching to eliminate repeated TLS/handshake overhead.
     """
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
@@ -94,35 +115,53 @@ def call_gemini(system_prompt: str, history: list[dict], known_customer: dict | 
         )
 
     convo = "\n".join(f"{m['role'].upper()}: {m['content']}" for m in history)
-    prompt = f"{context}\n\nConversation so far:\n{convo}\n\nRespond with the JSON object only."
+    user_turn = convo if convo.strip() else "Hello"
 
     text = None
     last_error = None
 
-    # Strategy 1: google.genai SDK
-    try:
-        from google import genai
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-        )
-        if response and response.text:
-            text = response.text.strip()
-    except Exception as e:
-        last_error = e
+    # Strategy 1: google.genai SDK with native system_instruction, thinking_budget=0 & response_mime_type
+    client = get_genai_client(api_key)
+    if client:
+        try:
+            from google.genai import types
+            config = types.GenerateContentConfig(
+                system_instruction=context,
+                response_mime_type="application/json",
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+                temperature=0.3,
+            )
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=user_turn,
+                config=config,
+            )
+            if response and response.text:
+                text = response.text.strip()
+        except Exception as e:
+            last_error = e
 
-    # Strategy 2: Direct HTTPX REST API fallback
+    # Strategy 2: Direct HTTPX REST API fallback with system_instruction and thinkingBudget: 0
     if not text:
         try:
             import httpx
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
             payload = {
+                "system_instruction": {
+                    "parts": [{"text": context}]
+                },
                 "contents": [
-                    {"parts": [{"text": prompt}]}
-                ]
+                    {"parts": [{"text": user_turn}]}
+                ],
+                "generationConfig": {
+                    "responseMimeType": "application/json",
+                    "thinkingConfig": {
+                        "thinkingBudget": 0
+                    },
+                    "temperature": 0.3
+                }
             }
-            with httpx.Client(timeout=35.0) as http_client:
+            with httpx.Client(timeout=20.0) as http_client:
                 resp = http_client.post(url, json=payload)
                 if resp.status_code == 200:
                     data = resp.json()
