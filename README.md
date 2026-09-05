@@ -152,23 +152,23 @@ IFashion/
 # AI Concierge Key (Google AI Studio)
 GEMINI_API_KEY=my-api-key
 
-# Production Database (Supabase PostgreSQL / leave empty for local SQLite)
+# Production Database (Supabase PostgreSQL)
 DATABASE_URL=my-db-password
 
 # Email Push Notifications (Gmail SMTP / 16-character App Password)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=your_email@gmail.com
-SMTP_PASSWORD=your_16_character_app_password
-DESIGNER_EMAIL=tailor_inbox@gmail.com
+SMTP_USER=configured_email@gmail.com
+SMTP_PASSWORD=my_16_character_app_password
+DESIGNER_EMAIL=my-email@gmail.com
 
 # Meta WhatsApp Cloud API
-WHATSAPP_CLOUD_API_TOKEN=your_meta_access_token
-WHATSAPP_PHONE_NUMBER_ID=your_meta_phone_number_id
-DESIGNER_PHONE=designer's-phone-number
+WHATSAPP_CLOUD_API_TOKEN=my_meta_access_token
+WHATSAPP_PHONE_NUMBER_ID=my_meta_phone_number_id
+DESIGNER_PHONE=my-phone-number
 
 # Production CORS
-FRONTEND_URL=https://your-frontend.vercel.app
+FRONTEND_URL=https://my-frontend.vercel.app
 ```
 
 ### Frontend (`frontend/.env`)
