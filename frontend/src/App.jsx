@@ -131,39 +131,60 @@ function Marquee() {
   );
 }
 
-function Nav({ activeDesigner, loggedInDesigner, onOrderClick, onDesignerPortalClick }) {
+function Header({ activeDesigner, loggedInDesigner, onOrderClick, onDesignerPortalClick }) {
   return (
-    <header className={`nav glass ${activeDesigner ? 'nav--has-banner' : ''}`}>
-      <div className="nav__brand">
-        <a href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span className="nav__logo-mark">✦</span>
-          <span className="nav__logo">IFASHION</span>
-        </a>
-        {activeDesigner && (
-          <span className="nav__atelier-tag">
-            <Store size={13} /> {activeDesigner.brand_name}
-          </span>
-        )}
-      </div>
+    <div className="fixed-header-wrapper">
+      {activeDesigner && (
+        <div className="designer-atelier-banner">
+          <div className="designer-atelier-banner__content">
+            <div className="designer-atelier-banner__left">
+              <span className="designer-atelier-banner__badge">
+                <Store size={12} /> Official Storefront
+              </span>
+              <span>
+                Ordering directly with <strong>{activeDesigner.brand_name}</strong>
+                {activeDesigner.location ? ` (${activeDesigner.location})` : ''}
+              </span>
+            </div>
+            <a href="/" className="designer-atelier-banner__link">
+              Explore All Tailors &rarr;
+            </a>
+          </div>
+        </div>
+      )}
 
-      <nav className="nav__links">
-        <a href="#work">Styles</a>
-        <a href="#how">How It Works</a>
-        <a href="#measurements">Fit Guide</a>
-        <a href="#about">About</a>
-        <a href="#traits">Why Us</a>
-      </nav>
+      <header className="nav">
+        <div className="nav__brand">
+          <a href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span className="nav__logo-mark">✦</span>
+            <span className="nav__logo">IFASHION</span>
+          </a>
+          {activeDesigner && (
+            <span className="nav__atelier-tag">
+              <Store size={13} /> {activeDesigner.brand_name}
+            </span>
+          )}
+        </div>
 
-      <div className="nav__actions">
-        <button className="btn btn--ghost btn--small" onClick={onDesignerPortalClick}>
-          <ShieldCheck size={15} />
-          {loggedInDesigner ? `${loggedInDesigner.brand_name}` : 'Tailor Login'}
-        </button>
-        <button className="btn btn--gold btn--small" onClick={() => onOrderClick('')}>
-          Order Outfit
-        </button>
-      </div>
-    </header>
+        <nav className="nav__links">
+          <a href="#work">Styles</a>
+          <a href="#how">How It Works</a>
+          <a href="#measurements">Fit Guide</a>
+          <a href="#about">About</a>
+          <a href="#traits">Why Us</a>
+        </nav>
+
+        <div className="nav__actions">
+          <button className="btn btn--ghost btn--small" onClick={onDesignerPortalClick}>
+            <ShieldCheck size={15} />
+            {loggedInDesigner ? `${loggedInDesigner.brand_name}` : 'Tailor Login'}
+          </button>
+          <button className="btn btn--gold btn--small" onClick={() => onOrderClick('')}>
+            Order Outfit
+          </button>
+        </div>
+      </header>
+    </div>
   );
 }
 
@@ -174,7 +195,7 @@ function Hero({ activeDesigner, onOrderClick, onRegisterClick }) {
     : 'Get clothes sewn to your exact body size — without any stress. Choose your style, save your size, and get it delivered to your home or pick it up at the shop.';
 
   return (
-    <section className="hero">
+    <section className={`hero ${activeDesigner ? 'hero--has-banner' : ''}`}>
 
 
       <motion.div
@@ -230,7 +251,7 @@ function Hero({ activeDesigner, onOrderClick, onRegisterClick }) {
           </div>
           <div className="trust-item">
             <Clock size={15} className="text-gold" />
-            <span>Orders Sent to WhatsApp</span>
+            <span>Orders Sent to WhatsApp and Emails.</span>
           </div>
         </div>
       </motion.div>
@@ -523,25 +544,7 @@ export default function App() {
 
   return (
     <div className="app">
-      {/* Top Banner when viewing a specific tailor's storefront */}
-      {activeDesigner && (
-        <div className="designer-atelier-banner glass">
-          <div className="designer-atelier-banner__content">
-            <span className="designer-atelier-banner__badge">
-              <Store size={13} /> Official Shop Link
-            </span>
-            <span>
-              You are ordering directly with <strong>{activeDesigner.brand_name}</strong>
-              {activeDesigner.location ? ` (${activeDesigner.location})` : ''}
-            </span>
-          </div>
-          <a href="/" className="designer-atelier-banner__link">
-            Explore All Tailors on IFashion &rarr;
-          </a>
-        </div>
-      )}
-
-      <Nav
+      <Header
         activeDesigner={activeDesigner}
         loggedInDesigner={loggedInDesigner}
         onOrderClick={handleOpenOrder}
