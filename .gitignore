@@ -1,0 +1,44 @@
+# Environment & Secrets
+.env
+*.env.local
+*.env.*.local
+backend/.env
+frontend/.env
+!.env.example
+!backend/.env.example
+!frontend/.env.example
+
+# Python & Virtual Environments
+**/__pycache__/
+*.py[cod]
+*$py.class
+backend/venv/
+backend/.venv/
+**/venv/
+**/.venv/
+
+# Node & Dependencies
+**/node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+
+# Databases
+*.db
+*.sqlite3
+backend/ifashion.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS & IDEs
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Vercel
+.vercel
