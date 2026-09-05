@@ -18,17 +18,20 @@ import {
   Scissors,
   LogOut,
   Sparkles,
+  MessageCircle,
+  ChevronRight,
+  TrendingUp,
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
 
 const STATUS_PILLS = [
   { id: 'all', label: 'All Orders' },
-  { id: 'received', label: 'New Orders' },
+  { id: 'received', label: 'New' },
   { id: 'measuring', label: 'Measuring' },
-  { id: 'cutting', label: 'Cutting Cloth' },
+  { id: 'cutting', label: 'Cutting' },
   { id: 'stitching', label: 'Sewing' },
-  { id: 'ready', label: 'Ready for Pickup / Delivery' },
+  { id: 'ready', label: 'Ready' },
   { id: 'delivered', label: 'Delivered' },
 ];
 
@@ -70,6 +73,13 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
     navigator.clipboard.writeText(publicLink);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2500);
+  }
+
+  function handleShareWhatsApp() {
+    const text = encodeURIComponent(
+      `Hello! You can now book your bespoke tailored outfits directly with ${currentDesigner?.brand_name || 'our shop'}. Order custom native wear sewn to your exact body measurements here: ${publicLink}`
+    );
+    window.open(`https://wa.me/?text=${text}`, '_blank');
   }
 
   async function fetchOrders() {
@@ -168,128 +178,217 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
     statusFilter === 'all' ? true : o.status === statusFilter
   );
 
+  // Quick order metrics
+  const activeOrdersCount = orders.filter((o) => o.status !== 'delivered').length;
+  const readyOrdersCount = orders.filter((o) => o.status === 'ready').length;
+
   return (
     <div className="admin-overlay" role="dialog" aria-modal="true" aria-label="Tailor Dashboard">
       <div className="admin-overlay__backdrop" onClick={onClose} />
       <div className="admin-panel glass-strong">
-        {/* Header & Bio Link banner */}
+        {/* Executive Atelier Header */}
         <div className="admin-panel__header">
-          <div className="admin-panel__title-wrap">
-            <span className="admin-badge">
-              <ShieldCheck size={14} /> Tailor Dashboard
-            </span>
-            <h2>{currentDesigner?.brand_name || 'My Shop Dashboard'}</h2>
-            <p className="admin-sub">
-              {currentDesigner?.location ? `📍 ${currentDesigner.location} • ` : ''}
-              Manage incoming customer orders and look up measurements
-            </p>
+          <div className="admin-panel__brand-area">
+            <div className="admin-panel__avatar">
+              <Scissors size={20} />
+            </div>
+            <div className="admin-panel__title-wrap">
+              <div className="admin-panel__badge-row">
+                <span className="admin-badge">
+                  <ShieldCheck size={13} /> Official Atelier Portal
+                </span>
+                {currentDesigner?.location && (
+                  <span className="admin-location-tag">
+                    <MapPin size={11} /> {currentDesigner.location}
+                  </span>
+                )}
+              </div>
+              <h2 className="admin-panel__title">
+                {currentDesigner?.brand_name || 'My Atelier Dashboard'}
+              </h2>
+            </div>
           </div>
+
           <div className="admin-header-actions">
-            <button className="btn btn--ghost btn--small" onClick={onLogout} title="Log out">
-              <LogOut size={15} /> Sign Out
+            <button className="btn-portal-ghost" onClick={onLogout} title="Sign Out">
+              <LogOut size={14} />
+              <span>Sign Out</span>
             </button>
-            <button className="admin-panel__close" onClick={onClose} aria-label="Close">
+            <button className="admin-panel__close-btn" onClick={onClose} aria-label="Close dashboard">
               <X size={18} />
             </button>
           </div>
         </div>
 
-        {/* Shareable Bio Link Banner */}
+        {/* Shareable Storefront Link Bar */}
         {currentDesigner?.handle && (
-          <div className="bio-link-banner glass">
-            <div className="bio-link-info">
-              <span className="bio-link-eyebrow">
-                <Sparkles size={13} /> Your Personal Link (Share on WhatsApp & Instagram)
-              </span>
-              <span className="bio-link-url">{publicLink}</span>
+          <div className="bio-link-banner">
+            <div className="bio-link-header-row">
+              <div className="bio-link-title">
+                <Sparkles size={14} className="text-gold" />
+                <span>Your Official Atelier Storefront Link</span>
+              </div>
+              <span className="bio-link-sub">Share with clients on WhatsApp Status & Instagram Bio</span>
             </div>
-            <div className="bio-link-actions">
-              <button
-                className={`btn btn--small ${copiedLink ? 'btn--success' : 'btn--gold'}`}
-                onClick={handleCopyLink}
-              >
-                {copiedLink ? (
-                  <>
-                    <Check size={14} /> Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy size={14} /> Copy My Link
-                  </>
-                )}
-              </button>
-              <a
-                href={publicLink}
-                target="_blank"
-                rel="noreferrer"
-                className="btn btn--outline btn--small"
-                title="View your public storefront"
-              >
-                <ExternalLink size={14} /> View My Link
-              </a>
+
+            <div className="bio-link-control-bar">
+              <div className="bio-link-pill-box" title={publicLink}>
+                <span className="link-icon">✦</span>
+                <span className="bio-link-text">{publicLink}</span>
+              </div>
+
+              <div className="bio-link-btn-group">
+                <button
+                  className={`btn btn--small ${copiedLink ? 'btn--success' : 'btn--gold'}`}
+                  onClick={handleCopyLink}
+                >
+                  {copiedLink ? (
+                    <>
+                      <Check size={14} /> Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={14} /> Copy Link
+                    </>
+                  )}
+                </button>
+
+                <button
+                  className="btn btn--small btn-whatsapp-share"
+                  onClick={handleShareWhatsApp}
+                  title="Share directly to WhatsApp"
+                >
+                  <MessageCircle size={14} /> WhatsApp
+                </button>
+
+                <a
+                  href={publicLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn--outline btn--small"
+                  title="View your live public storefront"
+                >
+                  <ExternalLink size={14} /> View
+                </a>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Navigation Tabs */}
-        <div className="admin-tabs">
-          <button
-            className={`admin-tab ${activeTab === 'orders' ? 'admin-tab--active' : ''}`}
-            onClick={() => setActiveTab('orders')}
-          >
-            <Package size={16} /> Orders ({orders.length})
-          </button>
-          <button
-            className={`admin-tab ${activeTab === 'customers' ? 'admin-tab--active' : ''}`}
-            onClick={() => {
-              setActiveTab('customers');
-              if (searchResults.length === 0) handleCustomerSearch();
-            }}
-          >
-            <Ruler size={16} /> Measurement Book
-          </button>
-          <button
-            className={`admin-tab ${activeTab === 'profile' ? 'admin-tab--active' : ''}`}
-            onClick={() => setActiveTab('profile')}
-          >
-            <User size={16} /> Atelier Settings
-          </button>
+        {/* Floating Segmented Navigation Tabs */}
+        <div className="admin-tabs-bar">
+          <div className="admin-segmented-tabs">
+            <button
+              className={`admin-segment-tab ${activeTab === 'orders' ? 'active' : ''}`}
+              onClick={() => setActiveTab('orders')}
+            >
+              <Package size={15} />
+              <span>Orders</span>
+              <span className="tab-pill-count">{orders.length}</span>
+            </button>
+            <button
+              className={`admin-segment-tab ${activeTab === 'customers' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveTab('customers');
+                if (searchResults.length === 0) handleCustomerSearch();
+              }}
+            >
+              <Ruler size={15} />
+              <span>Measurement Book</span>
+            </button>
+            <button
+              className={`admin-segment-tab ${activeTab === 'profile' ? 'active' : ''}`}
+              onClick={() => setActiveTab('profile')}
+            >
+              <User size={15} />
+              <span>Atelier Settings</span>
+            </button>
+          </div>
+
+          {activeTab === 'orders' && (
+            <button
+              className="admin-refresh-btn"
+              onClick={fetchOrders}
+              disabled={loading}
+              title="Refresh order list"
+            >
+              <RefreshCw size={13} className={loading ? 'spin' : ''} />
+              <span>Refresh</span>
+            </button>
+          )}
         </div>
 
-        {/* Tab 1: Orders */}
+        {/* Tab 1: Orders View */}
         {activeTab === 'orders' && (
           <div className="admin-content">
+            {/* Quick Metrics Strip */}
+            {orders.length > 0 && (
+              <div className="admin-metrics-strip">
+                <div className="metric-chip">
+                  <span className="metric-chip__num">{orders.length}</span>
+                  <span className="metric-chip__lbl">Total Orders</span>
+                </div>
+                <div className="metric-chip">
+                  <span className="metric-chip__num text-gold">{activeOrdersCount}</span>
+                  <span className="metric-chip__lbl">In Progress</span>
+                </div>
+                <div className="metric-chip">
+                  <span className="metric-chip__num text-green">{readyOrdersCount}</span>
+                  <span className="metric-chip__lbl">Ready for Pickup</span>
+                </div>
+              </div>
+            )}
+
+            {/* Filter Pills Toolbar */}
             <div className="orders-toolbar">
               <div className="status-filter-pills">
-                {STATUS_PILLS.map((pill) => (
-                  <button
-                    key={pill.id}
-                    className={`status-pill ${statusFilter === pill.id ? 'status-pill--active' : ''}`}
-                    onClick={() => setStatusFilter(pill.id)}
-                  >
-                    {pill.label}
-                  </button>
-                ))}
+                {STATUS_PILLS.map((pill) => {
+                  const count =
+                    pill.id === 'all'
+                      ? orders.length
+                      : orders.filter((o) => o.status === pill.id).length;
+                  return (
+                    <button
+                      key={pill.id}
+                      className={`status-pill ${statusFilter === pill.id ? 'status-pill--active' : ''}`}
+                      onClick={() => setStatusFilter(pill.id)}
+                    >
+                      <span>{pill.label}</span>
+                      {count > 0 && <span className="pill-counter">{count}</span>}
+                    </button>
+                  );
+                })}
               </div>
-              <button className="btn btn--ghost btn--small" onClick={fetchOrders} disabled={loading}>
-                <RefreshCw size={14} className={loading ? 'spin' : ''} /> Refresh
-              </button>
             </div>
 
+            {/* Orders Feed */}
             {loading && orders.length === 0 ? (
-              <div className="admin-empty">Loading bespoke orders...</div>
-            ) : filteredOrders.length === 0 ? (
               <div className="admin-empty">
-                <Package size={36} opacity={0.3} />
-                <p>No orders in this status category.</p>
-                <p className="text-muted">
-                  Share your profile link in your bio to begin receiving AI-verified orders!
+                <RefreshCw size={28} className="spin text-gold" />
+                <p>Loading your atelier orders...</p>
+              </div>
+            ) : filteredOrders.length === 0 ? (
+              <div className="admin-empty-card">
+                <div className="empty-icon-circle">
+                  <Package size={32} />
+                </div>
+                <h3>No Orders In This Category</h3>
+                <p>
+                  Share your personalized link on your WhatsApp Status or Instagram Bio. When customers order through your storefront, their verified sizes and style requests appear right here!
                 </p>
+                <div className="empty-actions">
+                  <button className="btn btn--gold btn--small" onClick={handleCopyLink}>
+                    <Copy size={14} /> Copy Storefront Link
+                  </button>
+                  <button className="btn btn--outline btn--small" onClick={handleShareWhatsApp}>
+                    <MessageCircle size={14} /> Share on WhatsApp
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="orders-grid">
                 {filteredOrders.map((order) => (
-                  <div className="order-card glass" key={order.id}>
+                  <div className="order-card" key={order.id}>
                     <div className="order-card__head">
                       <div>
                         <h4>{order.style || 'Custom Bespoke Outfit'}</h4>
@@ -303,12 +402,27 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
                     </div>
 
                     <div className="order-card__details">
-                      <div className="order-detail-row">
+                      <div className="order-detail-row client-row">
                         <span className="detail-label">Client:</span>
-                        <span className="detail-value">
-                          {order.customer?.name || 'Walk-in Client'} (
-                          <a href={`tel:${order.customer?.phone}`}>{order.customer?.phone}</a>)
-                        </span>
+                        <div className="client-contact-box">
+                          <strong>{order.customer?.name || 'Walk-in Client'}</strong>
+                          {order.customer?.phone && (
+                            <div className="client-contact-links">
+                              <a href={`tel:${order.customer.phone}`} className="contact-chip" title="Call client">
+                                <Phone size={11} /> {order.customer.phone}
+                              </a>
+                              <a
+                                href={`https://wa.me/${order.customer.phone.replace(/[^0-9]/g, '')}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="contact-chip contact-chip--wa"
+                                title="Chat on WhatsApp"
+                              >
+                                <MessageCircle size={11} /> Chat
+                              </a>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       {order.color && (
@@ -348,7 +462,7 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
                             </>
                           ) : (
                             <>
-                              <MapPin size={14} /> Atelier In-Person Walk-in / Pickup
+                              <MapPin size={14} /> Workshop In-Person Pickup
                             </>
                           )}
                         </span>
@@ -376,6 +490,7 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
                         value={order.status}
                         disabled={statusUpdating === order.id}
                         onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+                        className="status-select"
                       >
                         <option value="received">1. Received</option>
                         <option value="measuring">2. Measuring</option>
@@ -396,7 +511,7 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
         {activeTab === 'customers' && (
           <div className="admin-content">
             <form className="admin-search-bar" onSubmit={handleCustomerSearch}>
-              <Search size={16} />
+              <Search size={16} className="search-icon" />
               <input
                 type="text"
                 placeholder="Search measurement book by client name or phone number..."
@@ -410,20 +525,29 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
 
             <div className="customers-list">
               {searchResults.length === 0 ? (
-                <div className="admin-empty">
-                  <Ruler size={36} opacity={0.3} />
-                  <p>Search for a client or enter a phone number above.</p>
-                  <p className="text-muted">
-                    Clients who order through your AI concierge automatically have their measurements saved here.
+                <div className="admin-empty-card">
+                  <div className="empty-icon-circle">
+                    <Ruler size={32} />
+                  </div>
+                  <h3>No Clients Looked Up Yet</h3>
+                  <p>
+                    Enter a client's name or phone number in the search bar above to look up their exact body measurements.
                   </p>
                 </div>
               ) : (
                 searchResults.map((cust) => (
-                  <div className="customer-card glass" key={cust.id}>
+                  <div className="customer-card" key={cust.id}>
                     <div className="customer-card__header">
-                      <div>
-                        <h3>{cust.name}</h3>
-                        <span className="text-muted">📞 {cust.phone}</span>
+                      <div className="customer-avatar-row">
+                        <div className="cust-initials">
+                          {cust.name ? cust.name.slice(0, 2).toUpperCase() : 'CL'}
+                        </div>
+                        <div>
+                          <h3>{cust.name}</h3>
+                          <a href={`tel:${cust.phone}`} className="text-muted text-phone">
+                            📞 {cust.phone}
+                          </a>
+                        </div>
                       </div>
                       <span className="meas-count">
                         {cust.measurements ? Object.keys(cust.measurements).length : 0} Parameters Saved
@@ -457,35 +581,39 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
             <form className="atelier-settings-form" onSubmit={handleSaveProfile}>
               {saveSuccess && (
                 <div className="auth-success-badge">
-                  <CheckCircle2 size={16} /> Profile settings updated successfully!
+                  <CheckCircle2 size={16} /> Atelier profile updated successfully!
                 </div>
               )}
 
-              <div className="auth-form__group">
-                <label>Brand / Atelier Display Name</label>
-                <input
-                  type="text"
-                  required
-                  value={brandName}
-                  onChange={(e) => setBrandName(e.target.value)}
-                />
+              <div className="form-grid-2">
+                <div className="auth-form__group">
+                  <label>Brand / Atelier Display Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={brandName}
+                    onChange={(e) => setBrandName(e.target.value)}
+                    placeholder="e.g. Light Fashion Concept"
+                  />
+                </div>
+
+                <div className="auth-form__group">
+                  <label>WhatsApp Number (Receives Order Alerts)</label>
+                  <input
+                    type="tel"
+                    required
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="e.g. 08012345678"
+                  />
+                </div>
               </div>
 
               <div className="auth-form__group">
-                <label>WhatsApp Number (Receives incoming automated order alerts)</label>
-                <input
-                  type="tel"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
-              </div>
-
-              <div className="auth-form__group">
-                <label>Atelier Physical City / Address</label>
+                <label>Workshop / Atelier Physical Location</label>
                 <input
                   type="text"
-                  placeholder="e.g. Victoria Island, Lagos"
+                  placeholder="e.g. Akure, Ondo State or Victoria Island, Lagos"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                 />
@@ -497,12 +625,15 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
                   rows={3}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
+                  placeholder="e.g. Master tailor specializing in bespoke modern Agbada, sharp Senator suits, and handcrafted royal native wear."
                 />
               </div>
 
-              <button type="submit" className="btn btn--gold" disabled={profileSaving}>
-                {profileSaving ? 'Saving...' : 'Save Atelier Profile'}
-              </button>
+              <div className="form-actions-row">
+                <button type="submit" className="btn btn--gold" disabled={profileSaving}>
+                  {profileSaving ? 'Saving Profile...' : 'Save Atelier Profile'}
+                </button>
+              </div>
             </form>
           </div>
         )}
