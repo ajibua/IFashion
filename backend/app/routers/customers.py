@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from app.database import get_db
-from app.models.models import Customer
+from app.models.models import Customer, Order
 from app.schemas import schemas
 
 router = APIRouter(prefix="/customers", tags=["customers"])
@@ -13,10 +13,29 @@ router = APIRouter(prefix="/customers", tags=["customers"])
 
 @router.post("/", response_model=schemas.Customer)
 def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_db)):
-    existing = db.query(Customer).filter(Customer.phone == customer.phone).first()
+    """Create a new client record or upsert measurements if phone already exists."""
+    clean_phone = customer.phone.strip()
+    existing = db.query(Customer).filter(Customer.phone == clean_phone).first()
+
     if existing:
-        raise HTTPException(status_code=400, detail="Customer with this phone already exists")
-    db_customer = Customer(**customer.model_dump())
+        if customer.name:
+            existing.name = customer.name.strip()
+        if customer.measurements:
+            merged = dict(existing.measurements or {})
+            merged.update(customer.measurements)
+            existing.measurements = merged
+        if customer.designer_id and not existing.designer_id:
+            existing.designer_id = customer.designer_id
+        db.commit()
+        db.refresh(existing)
+        return existing
+
+    db_customer = Customer(
+        name=customer.name.strip(),
+        phone=clean_phone,
+        designer_id=customer.designer_id,
+        measurements=customer.measurements or {},
+    )
     db.add(db_customer)
     db.commit()
     db.refresh(db_customer)
@@ -29,17 +48,25 @@ def search_customers(
     designer_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
-    """Search customers by name or phone — used by the designer measurement book."""
+    """Search customers by name or phone — used by the tailor measurement book."""
     query = db.query(Customer).filter(or_(Customer.name.ilike(f"%{q}%"), Customer.phone.ilike(f"%{q}%")))
     if designer_id:
-        query = query.filter(or_(Customer.designer_id == designer_id, Customer.designer_id.is_(None)))
+        # Include clients directly registered to this tailor OR who have placed orders with this tailor
+        query = query.filter(
+            or_(
+                Customer.designer_id == designer_id,
+                Customer.orders.any(Order.designer_id == designer_id),
+                Customer.designer_id.is_(None),
+            )
+        )
     return query.all()
 
 
 @router.get("/by-phone/{phone}", response_model=schemas.CustomerWithOrders)
 def get_customer_by_phone(phone: str, db: Session = Depends(get_db)):
     """Used by the AI chat to recall a returning customer's saved measurements."""
-    customer = db.query(Customer).filter(Customer.phone == phone).first()
+    clean_phone = phone.strip()
+    customer = db.query(Customer).filter(Customer.phone == clean_phone).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
     return customer
@@ -70,7 +97,14 @@ def list_customers(
     designer_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
+    """List all customers for a tailor's measurement book."""
     query = db.query(Customer).order_by(Customer.created_at.desc())
     if designer_id:
-        query = query.filter(or_(Customer.designer_id == designer_id, Customer.designer_id.is_(None)))
+        # Include clients directly registered to this tailor OR who have placed orders with this tailor
+        query = query.filter(
+            or_(
+                Customer.designer_id == designer_id,
+                Customer.orders.any(Order.designer_id == designer_id),
+            )
+        )
     return query.all()

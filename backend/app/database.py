@@ -10,21 +10,15 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# Read connection string from environment (e.g. Supabase connection string)
 raw_db_url = os.environ.get("DATABASE_URL", "sqlite:///./ifashion.db")
 
-# Supabase / cloud providers often use "postgres://", which SQLAlchemy 1.4+ requires as "postgresql://"
 if raw_db_url.startswith("postgres://"):
     db_url = raw_db_url.replace("postgres://", "postgresql://", 1)
 else:
     db_url = raw_db_url
-
-# Configure engine parameters based on database dialect
 if "sqlite" in db_url:
-    # check_same_thread=False is needed only for SQLite
     engine = create_engine(db_url, connect_args={"check_same_thread": False})
 else:
-    # PostgreSQL / Supabase pooler configuration (serverless friendly)
     engine = create_engine(
         db_url,
         pool_pre_ping=True,

@@ -6,6 +6,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Header, status
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.database import get_db
 from app.models.models import Designer
@@ -57,6 +58,8 @@ def verify_password(password: str, hashed: str) -> bool:
     return hash_password(password, salt) == hashed
 
 
+from app.auth_jwt import create_access_token, decode_access_token
+
 def get_current_designer(
     authorization: Optional[str] = Header(None),
     x_designer_token: Optional[str] = Header(None),
@@ -74,7 +77,16 @@ def get_current_designer(
             detail="Designer authentication required",
         )
 
-    designer = db.query(Designer).filter(Designer.token == token).first()
+    # 1. Primary: Verify signed JWT
+    payload = decode_access_token(token)
+    designer = None
+    if payload and "sub" in payload:
+        designer = db.query(Designer).filter(Designer.id == payload["sub"]).first()
+
+    # 2. Fallback: Legacy token lookup for existing sessions
+    if not designer:
+        designer = db.query(Designer).filter(Designer.token == token).first()
+
     if not designer:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -98,8 +110,15 @@ def register(data: schemas.DesignerCreate, db: Session = Depends(get_db)):
     if db.query(Designer).filter(Designer.email == email).first():
         raise HTTPException(status_code=400, detail="An account with this email already exists.")
 
-    token = secrets.token_hex(32)
+    from app.models.models import gen_uuid
+    designer_id = gen_uuid()
+    token = create_access_token(
+        subject=designer_id,
+        extra_claims={"email": email, "handle": handle, "brand_name": data.brand_name.strip()},
+    )
+
     designer = Designer(
+        id=designer_id,
         brand_name=data.brand_name.strip(),
         handle=handle,
         email=email,
@@ -125,7 +144,12 @@ def login(data: schemas.DesignerLogin, db: Session = Depends(get_db)):
     if not designer or not verify_password(data.password, designer.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password.")
 
-    designer.token = secrets.token_hex(32)
+    # Generate signed JWT token
+    token = create_access_token(
+        subject=designer.id,
+        extra_claims={"email": designer.email, "handle": designer.handle, "brand_name": designer.brand_name},
+    )
+    designer.token = token
     db.commit()
     db.refresh(designer)
     return designer
@@ -154,7 +178,48 @@ def update_profile(
         current_designer.delivery_options = data.delivery_options
     if data.instagram is not None:
         current_designer.instagram = data.instagram
+    if data.portfolio is not None:
+        current_designer.portfolio = data.portfolio
 
+    db.commit()
+    db.refresh(current_designer)
+    return current_designer
+
+
+@router.post("/portfolio", response_model=schemas.DesignerResponse)
+def add_portfolio_item(
+    item: schemas.PortfolioItemCreate,
+    current_designer: Designer = Depends(get_current_designer),
+    db: Session = Depends(get_db),
+):
+    """Add a tailor's custom design/style to their shop catalog."""
+    current_portfolio = list(current_designer.portfolio or [])
+    new_item = {
+        "id": secrets.token_hex(8),
+        "title": item.title.strip(),
+        "tag": item.tag.strip() if item.tag else "All Styles",
+        "desc": item.desc.strip() if item.desc else "",
+        "image": item.image.strip(),
+    }
+    current_portfolio.insert(0, new_item)
+    current_designer.portfolio = current_portfolio
+    flag_modified(current_designer, "portfolio")
+    db.commit()
+    db.refresh(current_designer)
+    return current_designer
+
+
+@router.delete("/portfolio/{item_id}", response_model=schemas.DesignerResponse)
+def delete_portfolio_item(
+    item_id: str,
+    current_designer: Designer = Depends(get_current_designer),
+    db: Session = Depends(get_db),
+):
+    """Remove a custom design/style from the tailor's shop catalog."""
+    current_portfolio = list(current_designer.portfolio or [])
+    filtered = [p for p in current_portfolio if p.get("id") != item_id]
+    current_designer.portfolio = filtered
+    flag_modified(current_designer, "portfolio")
     db.commit()
     db.refresh(current_designer)
     return current_designer

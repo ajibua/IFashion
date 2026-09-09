@@ -21,6 +21,9 @@ import {
   MessageCircle,
   ChevronRight,
   TrendingUp,
+  Image as ImageIcon,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
@@ -36,7 +39,7 @@ const STATUS_PILLS = [
 ];
 
 export default function AdminModal({ open, onClose, currentDesigner, onLogout }) {
-  const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'customers' | 'profile'
+  const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'customers' | 'portfolio' | 'profile'
   const [statusFilter, setStatusFilter] = useState('all');
   const [orders, setOrders] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,6 +47,15 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
   const [loading, setLoading] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(null);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // Portfolio / Styles states
+  const [portfolio, setPortfolio] = useState(currentDesigner?.portfolio || []);
+  const [newTitle, setNewTitle] = useState('');
+  const [newTag, setNewTag] = useState('Senator Suits');
+  const [newImage, setNewImage] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [addingItem, setAddingItem] = useState(false);
+  const [portfolioSuccess, setPortfolioSuccess] = useState(false);
 
   // Profile edit states
   const [brandName, setBrandName] = useState(currentDesigner?.brand_name || '');
@@ -56,6 +68,7 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
   useEffect(() => {
     if (open && currentDesigner) {
       fetchOrders();
+      setPortfolio(currentDesigner.portfolio || []);
       setBrandName(currentDesigner.brand_name || '');
       setPhone(currentDesigner.phone || '');
       setLocation(currentDesigner.location || '');
@@ -77,7 +90,7 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
 
   function handleShareWhatsApp() {
     const text = encodeURIComponent(
-      `Hello! You can now book your bespoke tailored outfits directly with ${currentDesigner?.brand_name || 'our shop'}. Order custom native wear sewn to your exact body measurements here: ${publicLink}`
+      `Hello! You can now order custom-tailored clothes directly from ${currentDesigner?.brand_name || 'our shop'}. Order your outfits sewn to your exact body measurements here: ${publicLink}`
     );
     window.open(`https://wa.me/?text=${text}`, '_blank');
   }
@@ -102,19 +115,22 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
 
   async function handleCustomerSearch(e) {
     if (e) e.preventDefault();
-    if (!searchQuery.trim()) return;
     setLoading(true);
     try {
-      const designerParam = currentDesigner?.id ? `&designer_id=${currentDesigner.id}` : '';
-      const res = await fetch(
-        `${API_BASE}/customers/search?q=${encodeURIComponent(searchQuery.trim())}${designerParam}`
-      );
+      const designerParam = currentDesigner?.id ? `designer_id=${currentDesigner.id}` : '';
+      let url;
+      if (searchQuery.trim()) {
+        url = `${API_BASE}/customers/search?q=${encodeURIComponent(searchQuery.trim())}${designerParam ? '&' + designerParam : ''}`;
+      } else {
+        url = `${API_BASE}/customers/${designerParam ? '?' + designerParam : ''}`;
+      }
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setSearchResults(data);
       }
     } catch (err) {
-      console.error('Failed to search customers', err);
+      console.error('Failed to load customers', err);
     } finally {
       setLoading(false);
     }
@@ -174,6 +190,68 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
     }
   }
 
+  async function handleAddPortfolioItem(e) {
+    e.preventDefault();
+    if (!newTitle.trim() || !newImage.trim()) return;
+
+    setAddingItem(true);
+    setPortfolioSuccess(false);
+
+    try {
+      const token = localStorage.getItem('ifashion_token');
+      const res = await fetch(`${API_BASE}/auth/portfolio`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: newTitle.trim(),
+          tag: newTag,
+          desc: newDesc.trim(),
+          image: newImage.trim(),
+        }),
+      });
+
+      if (res.ok) {
+        const updated = await res.json();
+        setPortfolio(updated.portfolio || []);
+        localStorage.setItem('ifashion_designer', JSON.stringify(updated));
+        setNewTitle('');
+        setNewImage('');
+        setNewDesc('');
+        setPortfolioSuccess(true);
+        setTimeout(() => setPortfolioSuccess(false), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to add portfolio item', err);
+    } finally {
+      setAddingItem(false);
+    }
+  }
+
+  async function handleDeletePortfolioItem(itemId) {
+    if (!confirm('Are you sure you want to remove this style from your shop?')) return;
+
+    try {
+      const token = localStorage.getItem('ifashion_token');
+      const res = await fetch(`${API_BASE}/auth/portfolio/${itemId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        const updated = await res.json();
+        setPortfolio(updated.portfolio || []);
+        localStorage.setItem('ifashion_designer', JSON.stringify(updated));
+      }
+    } catch (err) {
+      console.error('Failed to delete portfolio item', err);
+    }
+  }
+
   const filteredOrders = orders.filter((o) =>
     statusFilter === 'all' ? true : o.status === statusFilter
   );
@@ -186,7 +264,7 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
     <div className="admin-overlay" role="dialog" aria-modal="true" aria-label="Tailor Dashboard">
       <div className="admin-overlay__backdrop" onClick={onClose} />
       <div className="admin-panel glass-strong">
-        {/* Executive Atelier Header */}
+        {/* Shop Dashboard Header */}
         <div className="admin-panel__header">
           <div className="admin-panel__brand-area">
             <div className="admin-panel__avatar">
@@ -195,7 +273,7 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
             <div className="admin-panel__title-wrap">
               <div className="admin-panel__badge-row">
                 <span className="admin-badge">
-                  <ShieldCheck size={13} /> Official Atelier Portal
+                  <ShieldCheck size={13} /> Tailor Shop Portal
                 </span>
                 {currentDesigner?.location && (
                   <span className="admin-location-tag">
@@ -204,7 +282,7 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
                 )}
               </div>
               <h2 className="admin-panel__title">
-                {currentDesigner?.brand_name || 'My Atelier Dashboard'}
+                {currentDesigner?.brand_name || 'My Tailor Dashboard'}
               </h2>
             </div>
           </div>
@@ -226,7 +304,7 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
             <div className="bio-link-header-row">
               <div className="bio-link-title">
                 <Sparkles size={14} className="text-gold" />
-                <span>Your Official Atelier Storefront Link</span>
+                <span>Your Tailor Shop Link</span>
               </div>
               <span className="bio-link-sub">Share with clients on WhatsApp Status & Instagram Bio</span>
             </div>
@@ -287,6 +365,14 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
               <span className="tab-pill-count">{orders.length}</span>
             </button>
             <button
+              className={`admin-segment-tab ${activeTab === 'portfolio' ? 'active' : ''}`}
+              onClick={() => setActiveTab('portfolio')}
+            >
+              <ImageIcon size={15} />
+              <span>My Styles & Photos</span>
+              <span className="tab-pill-count">{portfolio.length}</span>
+            </button>
+            <button
               className={`admin-segment-tab ${activeTab === 'customers' ? 'active' : ''}`}
               onClick={() => {
                 setActiveTab('customers');
@@ -301,7 +387,7 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
               onClick={() => setActiveTab('profile')}
             >
               <User size={15} />
-              <span>Atelier Settings</span>
+              <span>Shop Settings</span>
             </button>
           </div>
 
@@ -365,7 +451,7 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
             {loading && orders.length === 0 ? (
               <div className="admin-empty">
                 <RefreshCw size={28} className="spin text-gold" />
-                <p>Loading your atelier orders...</p>
+                <p>Loading your shop orders...</p>
               </div>
             ) : filteredOrders.length === 0 ? (
               <div className="admin-empty-card">
@@ -391,7 +477,7 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
                   <div className="order-card" key={order.id}>
                     <div className="order-card__head">
                       <div>
-                        <h4>{order.style || 'Custom Bespoke Outfit'}</h4>
+                        <h4>{order.style || 'Custom Outfit'}</h4>
                         <span className="order-card__meta">
                           Placed {new Date(order.created_at).toLocaleDateString()}
                         </span>
@@ -507,7 +593,163 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
           </div>
         )}
 
-        {/* Tab 2: Measurement Book */}
+        {/* Tab 2: My Styles & Photos */}
+        {activeTab === 'portfolio' && (
+          <div className="admin-content">
+            <div className="portfolio-manager">
+              <div className="portfolio-manager__intro">
+                <div>
+                  <h3 className="portfolio-manager__title">Upload & Manage Your Clothing Styles</h3>
+                  <p className="portfolio-manager__subtitle">
+                    Add photos of your actual sewn native wear. These will replace the sample styles on your shop page so customers can see and order your real work.
+                  </p>
+                </div>
+              </div>
+
+              {/* Add New Style Form */}
+              <form className="portfolio-form-card" onSubmit={handleAddPortfolioItem}>
+                <div className="portfolio-form-card__header">
+                  <div className="card-tag">
+                    <Plus size={14} /> Add New Design / Style
+                  </div>
+                  {portfolioSuccess && (
+                    <span className="text-green text-sm flex-center gap-1">
+                      <CheckCircle2 size={14} /> Style published to your shop!
+                    </span>
+                  )}
+                </div>
+
+                <div className="form-grid-3">
+                  <div className="auth-form__group">
+                    <label>Outfit Title / Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      placeholder="e.g. Royal Emerald Agbada 3-Piece"
+                    />
+                  </div>
+
+                  <div className="auth-form__group">
+                    <label>Category / Style Type</label>
+                    <select
+                      value={newTag}
+                      onChange={(e) => setNewTag(e.target.value)}
+                      className="portfolio-select"
+                    >
+                      <option value="Senator Suits">Senator Suits</option>
+                      <option value="Royal Agbada">Royal Agbada</option>
+                      <option value="Kaftan">Kaftan</option>
+                      <option value="Ankara Styles">Ankara Styles</option>
+                      <option value="Custom Trousers">Custom Trousers</option>
+                      <option value="Casual Wear">Casual Wear</option>
+                      <option value="Traditional Native">Traditional Native</option>
+                    </select>
+                  </div>
+
+                  <div className="auth-form__group">
+                    <label>Photo Image Link (URL)</label>
+                    <input
+                      type="url"
+                      required
+                      value={newImage}
+                      onChange={(e) => setNewImage(e.target.value)}
+                      placeholder="https://... image address"
+                    />
+                  </div>
+                </div>
+
+                <div className="auth-form__group">
+                  <label>Short Description / Fabric Note (Optional)</label>
+                  <input
+                    type="text"
+                    value={newDesc}
+                    onChange={(e) => setNewDesc(e.target.value)}
+                    placeholder="e.g. Premium Irish wool fabric with gold neck embroidery and matching trousers."
+                  />
+                </div>
+
+                {newImage && (
+                  <div className="portfolio-preview-strip">
+                    <span className="text-muted text-xs">Photo Preview:</span>
+                    <img
+                      src={newImage}
+                      alt="Preview"
+                      className="portfolio-preview-thumb"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+
+                <div className="form-actions-row">
+                  <button type="submit" className="btn btn--gold" disabled={addingItem}>
+                    <Plus size={16} />
+                    {addingItem ? 'Adding Style...' : 'Add Style to My Shop'}
+                  </button>
+                </div>
+              </form>
+
+              {/* Uploaded Styles Grid */}
+              <div className="portfolio-gallery-section">
+                <div className="portfolio-gallery-header">
+                  <h4>Your Active Shop Styles ({portfolio.length})</h4>
+                  <span className="text-muted text-xs">
+                    {portfolio.length === 0
+                      ? 'No custom styles added yet. Your shop currently displays sample styles.'
+                      : 'These styles are currently live on your storefront for customers to browse and order.'}
+                  </span>
+                </div>
+
+                {portfolio.length === 0 ? (
+                  <div className="admin-empty-card">
+                    <div className="empty-icon-circle">
+                      <ImageIcon size={32} />
+                    </div>
+                    <h3>No Custom Styles Uploaded Yet</h3>
+                    <p>
+                      Use the form above to paste links to photos of your sewn native clothes. Once added, they will immediately show in your shop's lookbook!
+                    </p>
+                  </div>
+                ) : (
+                  <div className="portfolio-cards-grid">
+                    {portfolio.map((item) => (
+                      <div className="portfolio-card" key={item.id}>
+                        <div className="portfolio-card__image-wrap">
+                          <img
+                            src={item.image}
+                            alt={item.title}
+                            onError={(e) => {
+                              e.target.src =
+                                'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=600&auto=format&fit=crop&q=80';
+                            }}
+                          />
+                          <span className="portfolio-card__tag">{item.tag}</span>
+                          <button
+                            type="button"
+                            className="portfolio-card__delete-btn"
+                            onClick={() => handleDeletePortfolioItem(item.id)}
+                            title="Remove style from shop"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                        <div className="portfolio-card__body">
+                          <h4 className="portfolio-card__title">{item.title}</h4>
+                          {item.desc && <p className="portfolio-card__desc">{item.desc}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 3: Measurement Book */}
         {activeTab === 'customers' && (
           <div className="admin-content">
             <form className="admin-search-bar" onSubmit={handleCustomerSearch}>
@@ -575,19 +817,19 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
           </div>
         )}
 
-        {/* Tab 3: Atelier Settings */}
+        {/* Tab 4: Shop Settings */}
         {activeTab === 'profile' && (
           <div className="admin-content">
             <form className="atelier-settings-form" onSubmit={handleSaveProfile}>
               {saveSuccess && (
                 <div className="auth-success-badge">
-                  <CheckCircle2 size={16} /> Atelier profile updated successfully!
+                  <CheckCircle2 size={16} /> Shop profile updated successfully!
                 </div>
               )}
 
               <div className="form-grid-2">
                 <div className="auth-form__group">
-                  <label>Brand / Atelier Display Name</label>
+                  <label>Shop / Brand Name</label>
                   <input
                     type="text"
                     required
@@ -610,7 +852,7 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
               </div>
 
               <div className="auth-form__group">
-                <label>Workshop / Atelier Physical Location</label>
+                <label>Shop / Workshop Location</label>
                 <input
                   type="text"
                   placeholder="e.g. Akure, Ondo State or Victoria Island, Lagos"
@@ -620,18 +862,18 @@ export default function AdminModal({ open, onClose, currentDesigner, onLogout })
               </div>
 
               <div className="auth-form__group">
-                <label>Atelier Bio / Specialty Statement</label>
+                <label>Shop Bio / Specialty</label>
                 <textarea
                   rows={3}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  placeholder="e.g. Master tailor specializing in bespoke modern Agbada, sharp Senator suits, and handcrafted royal native wear."
+                  placeholder="e.g. Tailor specializing in modern Agbada, sharp Senator suits, and custom native wear."
                 />
               </div>
 
               <div className="form-actions-row">
                 <button type="submit" className="btn btn--gold" disabled={profileSaving}>
-                  {profileSaving ? 'Saving Profile...' : 'Save Atelier Profile'}
+                  {profileSaving ? 'Saving Profile...' : 'Save Shop Profile'}
                 </button>
               </div>
             </form>

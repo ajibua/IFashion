@@ -20,6 +20,13 @@ class DesignerLogin(BaseModel):
     password: str
 
 
+class PortfolioItemCreate(BaseModel):
+    title: str
+    tag: str = "All Styles"  # e.g. "Agbada", "Senator Suits", "Kaftan", "Trousers", "Ankara"
+    desc: Optional[str] = None
+    image: str
+
+
 class DesignerUpdate(BaseModel):
     brand_name: Optional[str] = None
     phone: Optional[str] = None
@@ -27,6 +34,7 @@ class DesignerUpdate(BaseModel):
     location: Optional[str] = None
     delivery_options: Optional[List[str]] = None
     instagram: Optional[str] = None
+    portfolio: Optional[List[Dict[str, Any]]] = None
 
 
 class DesignerPublic(BaseModel):
@@ -40,6 +48,7 @@ class DesignerPublic(BaseModel):
     location: Optional[str] = None
     delivery_options: Optional[List[str]] = None
     instagram: Optional[str] = None
+    portfolio: Optional[List[Dict[str, Any]]] = None
 
 
 class DesignerResponse(BaseModel):
@@ -54,6 +63,7 @@ class DesignerResponse(BaseModel):
     location: Optional[str] = None
     delivery_options: Optional[List[str]] = None
     instagram: Optional[str] = None
+    portfolio: Optional[List[Dict[str, Any]]] = None
     token: Optional[str] = None
     created_at: datetime
 

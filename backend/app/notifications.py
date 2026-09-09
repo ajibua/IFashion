@@ -33,7 +33,7 @@ def clean_phone_for_whatsapp(phone: str) -> str:
 
 def format_order_plain_text(customer_name: str, phone: str, order: dict, designer_name: Optional[str] = None) -> str:
     delivery_method = order.get("delivery_method", "pickup")
-    delivery_label = "In-person Atelier Pickup" if delivery_method == "pickup" else "Delivery Driver / Courier Dispatch"
+    delivery_label = "Pick Up at Shop" if delivery_method == "pickup" else "Delivery Driver / Courier Dispatch"
 
     measurements = order.get("measurements")
     meas_str = ""
@@ -41,7 +41,7 @@ def format_order_plain_text(customer_name: str, phone: str, order: dict, designe
         meas_str = "\nMeasurements:\n" + "\n".join(f"  - {k.capitalize()}: {v}" for k, v in measurements.items())
 
     lines = [
-        f"* NEW BESPOKE ORDER - {designer_name or 'IFashion Atelier'} *",
+        f"* NEW CLOTHES ORDER - {designer_name or 'IFashion Tailors'} *",
         "----------------------------------------",
         f"Customer: {customer_name}",
         f"Phone (WhatsApp): {phone}",
@@ -67,9 +67,9 @@ def format_order_plain_text(customer_name: str, phone: str, order: dict, designe
 
 
 def format_order_html(customer_name: str, phone: str, order: dict, designer_name: Optional[str] = None) -> str:
-    brand = designer_name or "IFashion Atelier"
+    brand = designer_name or "IFashion Tailor Shop"
     delivery_method = order.get("delivery_method", "pickup")
-    delivery_label = "In-person Atelier Pickup" if delivery_method == "pickup" else "Delivery Driver / Courier Dispatch"
+    delivery_label = "Pick Up at Shop" if delivery_method == "pickup" else "Delivery Driver / Courier Dispatch"
 
     clean_wa = clean_phone_for_whatsapp(phone)
     wa_link = f"https://wa.me/{clean_wa}" if clean_wa else "#"
@@ -106,7 +106,7 @@ def format_order_html(customer_name: str, phone: str, order: dict, designer_name
         <!-- Header -->
         <tr>
           <td style="background-color: #1C1410; padding: 28px 32px; text-align: center;">
-            <div style="font-size: 20px; color: #C59A6F; margin-bottom: 6px;">✦ IFASHION BESPOKE ✦</div>
+            <div style="font-size: 20px; color: #C59A6F; margin-bottom: 6px;">✦ IFASHION TAILORS ✦</div>
             <h1 style="margin: 0; color: #FFFFFF; font-size: 22px; font-weight: 700; letter-spacing: 0.5px;">New Order Received</h1>
             <p style="margin: 6px 0 0; color: #A69E96; font-size: 14px;">for {brand}</p>
           </td>
@@ -138,7 +138,7 @@ def format_order_html(customer_name: str, phone: str, order: dict, designer_name
             <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
               <tr>
                 <td style="padding: 8px 0; color: #6D635B; font-size: 14px;">Style Selected</td>
-                <td style="padding: 8px 0; color: #1C1410; font-weight: 600; font-size: 14px; text-align: right;">{order.get('style', 'Bespoke Native')}</td>
+                <td style="padding: 8px 0; color: #1C1410; font-weight: 600; font-size: 14px; text-align: right;">{order.get('style', 'Custom Native Wear')}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; color: #6D635B; font-size: 14px;">Color / Fabric</td>
@@ -179,7 +179,7 @@ def format_order_html(customer_name: str, phone: str, order: dict, designer_name
         <!-- Footer Note -->
         <tr>
           <td style="background-color: #FAF7F2; padding: 18px 32px; text-align: center; font-size: 12px; color: #8F8479; border-top: 1px solid #EFEAE1;">
-            Sent automatically by IFashion Atelier Concierge &bull; Your bespoke fashion operating platform
+            Sent automatically by IFashion &bull; Your tailor shop operating platform
           </td>
         </tr>
       </table>
@@ -209,7 +209,7 @@ def send_email_notification(to_email: str, subject: str, plain_body: str, html_b
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"] = f"IFashion Atelier <{user}>"
+    msg["From"] = f"IFashion Tailor Shop <{user}>"
     msg["To"] = to_email
 
     msg.attach(MIMEText(plain_body, "plain"))
@@ -290,17 +290,27 @@ def send_whatsapp_cloud_notification(to_phone: str, body: str) -> Tuple[bool, st
         return False, f"Connection error: {e}"
 
 
-def notify_new_order(customer_name: str, phone: str, order: dict, designer: Optional[Any] = None) -> dict:
+def notify_new_order(
+    customer_name: str,
+    phone: str,
+    order: dict,
+    designer: Optional[Any] = None,
+    designer_name: Optional[str] = None,
+    designer_phone: Optional[str] = None,
+    designer_email: Optional[str] = None,
+) -> dict:
     """
     Main dispatch function called whenever a client confirms an order with the AI concierge.
     Sends WhatsApp push & Email to the specific designer, plus customer confirmation if configured.
+    Supports either passing a designer model instance OR explicit designer_name, designer_phone,
+    designer_email parameters (recommended for FastAPI BackgroundTasks to avoid ORM session issues).
     """
-    designer_name = getattr(designer, "brand_name", None) if designer else None
-    target_whatsapp = getattr(designer, "phone", None) if designer else os.environ.get("DESIGNER_PHONE")
-    target_email = getattr(designer, "email", None) if designer else os.environ.get("DESIGNER_EMAIL")
+    target_designer_name = designer_name or (getattr(designer, "brand_name", None) if designer else None)
+    target_whatsapp = designer_phone or (getattr(designer, "phone", None) if designer else os.environ.get("DESIGNER_PHONE"))
+    target_email = designer_email or (getattr(designer, "email", None) if designer else os.environ.get("DESIGNER_EMAIL"))
 
-    plain_body = format_order_plain_text(customer_name, phone, order, designer_name)
-    html_body = format_order_html(customer_name, phone, order, designer_name)
+    plain_body = format_order_plain_text(customer_name, phone, order, target_designer_name)
+    html_body = format_order_html(customer_name, phone, order, target_designer_name)
 
     sent_whatsapp, wa_status = False, "Not configured"
     if target_whatsapp:
@@ -312,13 +322,13 @@ def notify_new_order(customer_name: str, phone: str, order: dict, designer: Opti
     clean_target_phone = clean_phone_for_whatsapp(target_whatsapp) if target_whatsapp else ""
     if clean_cust_phone and clean_cust_phone != clean_target_phone:
         customer_msg = (
-            f"✦ *ORDER CONFIRMED - {designer_name or 'IFashion Atelier'}* ✦\n\n"
+            f"✦ *ORDER CONFIRMED - {target_designer_name or 'IFashion Tailors'}* ✦\n\n"
             f"Hello {customer_name},\n"
-            f"Your bespoke order has been successfully received!\n\n"
-            f"• Style: {order.get('style', 'Bespoke native')}\n"
+            f"Your clothes order has been successfully received!\n\n"
+            f"• Style: {order.get('style', 'Custom native')}\n"
             f"• Color: {order.get('color', '-')}\n"
             f"• Target Date: {order.get('deadline', '-')}\n"
-            f"• Fulfillment: {'Courier Dispatch' if order.get('delivery_method') == 'delivery' else 'Atelier Pickup'}\n\n"
+            f"• Fulfillment: {'Courier Dispatch' if order.get('delivery_method') == 'delivery' else 'Pick Up at Shop'}\n\n"
             f"We are preparing your order. For any questions, you can reply directly to this number."
         )
         _, customer_wa_status = send_whatsapp_cloud_notification(clean_cust_phone, customer_msg)
@@ -327,7 +337,7 @@ def notify_new_order(customer_name: str, phone: str, order: dict, designer: Opti
     if target_email:
         sent_email, email_status = send_email_notification(
             to_email=target_email,
-            subject=f"✦ New Bespoke Order: {order.get('style', 'Native Wear')} from {customer_name}",
+            subject=f"✦ New Clothes Order: {order.get('style', 'Native Wear')} from {customer_name}",
             plain_body=plain_body,
             html_body=html_body,
         )
@@ -345,7 +355,7 @@ def notify_new_order(customer_name: str, phone: str, order: dict, designer: Opti
     # Always log comprehensive diagnostics to the terminal
     print("\n" + "=" * 60)
     print("[IFASHION NOTIFICATION ENGINE] Automated Order Alert")
-    print(f"Designer: {designer_name or 'Default Atelier'}")
+    print(f"Designer: {target_designer_name or 'Default Shop'}")
     print(f"Designer WhatsApp ({target_whatsapp}): {wa_status_display}")
     if clean_cust_phone != clean_target_phone:
         print(f"Customer WhatsApp ({clean_cust_phone}): {customer_wa_status}")
@@ -364,3 +374,60 @@ def notify_new_order(customer_name: str, phone: str, order: dict, designer: Opti
         "email_status": email_status,
         "direct_whatsapp_link": direct_chat_link,
     }
+
+
+def notify_order_status_update(
+    customer_name: str,
+    customer_phone: str,
+    order_style: str,
+    new_status: str,
+    designer_name: Optional[str] = None,
+    delivery_method: Optional[str] = "pickup",
+    delivery_address: Optional[str] = None,
+) -> dict:
+    """
+    Sends an automated WhatsApp status update to the customer when a tailor
+    advances the order status (e.g. measuring, cutting, stitching, ready, delivered).
+    """
+    brand = designer_name or "Your Tailor"
+    style = order_style or "custom outfit"
+    clean_cust_phone = clean_phone_for_whatsapp(customer_phone)
+
+    status_messages = {
+        "measuring": f"✦ *MEASUREMENT VERIFICATION - {brand}* ✦\n\nHello {customer_name},\nWe are currently verifying your body measurements for your {style}. Everything is on track!",
+        "cutting": f"✦ *FABRIC CUTTING STARTED - {brand}* ✦\n\nHello {customer_name},\nGreat news! We have started cutting the fabric for your {style}.",
+        "stitching": f"✦ *SEWING IN PROGRESS - {brand}* ✦\n\nHello {customer_name},\nOur master tailors are currently sewing your {style}. We are paying close attention to every detail.",
+        "ready": (
+            f"✦ *YOUR OUTFIT IS READY! - {brand}* ✦\n\nHello {customer_name},\n"
+            f"Your {style} is finished and pressed!\n\n"
+            + (
+                f"• Fulfillment: Ready for pickup at our shop.\nFeel free to walk in at your convenience!"
+                if delivery_method != "delivery"
+                else f"• Fulfillment: Packed for delivery to:\n{delivery_address or 'your delivery destination'}.\nOur dispatch driver will reach out shortly."
+            )
+        ),
+        "delivered": f"✦ *ORDER DELIVERED - {brand}* ✦\n\nHello {customer_name},\nYour {style} has been delivered! Thank you for choosing {brand}. We look forward to sewing for you again soon.",
+    }
+
+    msg = status_messages.get(
+        new_status.lower(),
+        f"✦ *ORDER UPDATE - {brand}* ✦\n\nHello {customer_name},\nYour order for {style} is now updated to: {new_status.upper()}.",
+    )
+
+    sent_whatsapp, wa_status = False, "Not attempted"
+    if clean_cust_phone:
+        sent_whatsapp, wa_status = send_whatsapp_cloud_notification(clean_cust_phone, msg)
+
+    print("\n" + "=" * 60)
+    print(f"[IFASHION NOTIFICATION ENGINE] Status Update -> {customer_name} ({clean_cust_phone})")
+    print(f"Status: {new_status.upper()} | WhatsApp Sent: {sent_whatsapp} ({wa_status})")
+    print("-" * 60)
+    print(msg)
+    print("=" * 60 + "\n")
+
+    return {
+        "whatsapp_sent": sent_whatsapp,
+        "whatsapp_status": wa_status,
+        "message": msg,
+    }
+

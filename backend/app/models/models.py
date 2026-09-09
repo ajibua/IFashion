@@ -15,16 +15,17 @@ class Designer(Base):
     __tablename__ = "designers"
 
     id = Column(String, primary_key=True, default=gen_uuid)
-    handle = Column(String, unique=True, nullable=False, index=True)  # e.g. "marvelous" -> ifashion.ng/@marvelous
+    handle = Column(String, unique=True, nullable=False, index=True)  
     brand_name = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
-    phone = Column(String, nullable=False)  # WhatsApp number for orders
+    phone = Column(String, nullable=False)  
     bio = Column(String, nullable=True)
-    location = Column(String, nullable=True)  # City / Physical atelier address
-    delivery_options = Column(JSON, default=lambda: ["pickup", "delivery"])  # pickup, delivery
+    location = Column(String, nullable=True)  
+    delivery_options = Column(JSON, default=lambda: ["pickup", "delivery"]) 
     instagram = Column(String, nullable=True)
-    token = Column(String, nullable=True, index=True)  # Session auth token
+    portfolio = Column(JSON, default=list, nullable=True) 
+    token = Column(String, nullable=True, index=True) 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -39,7 +40,7 @@ class Customer(Base):
     designer_id = Column(String, ForeignKey("designers.id"), nullable=True, index=True)
     name = Column(String, nullable=False)
     phone = Column(String, unique=True, nullable=False, index=True)
-    measurements = Column(JSON, nullable=True)  # e.g. {"chest": 40, "waist": 34, ...}
+    measurements = Column(JSON, nullable=True) 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -58,9 +59,9 @@ class Order(Base):
     occasion = Column(String, nullable=True)
     deadline = Column(String, nullable=True)
     notes = Column(String, nullable=True)
-    delivery_method = Column(String, default="pickup")  # "pickup" (in-person walk-in) or "delivery" (driver dispatch)
-    delivery_address = Column(String, nullable=True)  # Shipping address if delivery
-    status = Column(String, default="received")  # received | cutting | stitching | ready | delivered
+    delivery_method = Column(String, default="pickup") 
+    delivery_address = Column(String, nullable=True)  
+    status = Column(String, default="received") 
     created_at = Column(DateTime, default=datetime.utcnow)
 
     designer = relationship("Designer", back_populates="orders")

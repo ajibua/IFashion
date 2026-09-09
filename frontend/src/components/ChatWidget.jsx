@@ -16,6 +16,32 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
 
+function renderFormattedText(text) {
+  if (!text) return null;
+
+  const lines = text.split('\n');
+
+  return lines.map((line, lIdx) => {
+    const isBullet = /^\s*[\*\-]\s+/.test(line);
+    const cleanLine = isBullet ? line.replace(/^\s*[\*\-]\s+/, '') : line;
+
+    const parts = cleanLine.split(/(\*\*.*?\*\*)/g);
+    const renderedParts = parts.map((part, pIdx) => {
+      if (part.startsWith('**') && part.endsWith('**') && part.length >= 4) {
+        return <strong key={pIdx}>{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+
+    return (
+      <span key={lIdx} style={{ display: 'block', marginBottom: isBullet ? '4px' : '6px', paddingLeft: isBullet ? '12px' : '0' }}>
+        {isBullet && <span style={{ marginRight: '6px' }}>•</span>}
+        {renderedParts}
+      </span>
+    );
+  });
+}
+
 export default function ChatWidget({ open, onClose, initialPrompt = '', currentDesigner = null }) {
   const brandName = currentDesigner?.brand_name || 'IFashion';
   const defaultIntro = `Hello and welcome to ${brandName}! What would you like to get sewn? Tell me the style you want (like Agbada, Senator suit, or Kaftan), what color you like, when you need it, and if you want to pick it up or have it delivered to your house.`;
@@ -122,12 +148,12 @@ export default function ChatWidget({ open, onClose, initialPrompt = '', currentD
 
   const waSummary = lastExtracted
     ? encodeURIComponent(
-        `Hello ${brandName}, I just completed my bespoke order on IFashion!\n` +
-          `Style: ${lastExtracted.style || 'Bespoke'}\n` +
-          `Color: ${lastExtracted.color || 'Custom'}\n` +
-          `Deadline: ${lastExtracted.deadline || 'Soon'}\n` +
-          `Fulfillment: ${lastExtracted.delivery_method === 'delivery' ? 'Courier Dispatch' : 'In-person Atelier Pickup'}`
-      )
+      `Hello ${brandName}, I just placed a custom clothes order on IFashion!\n` +
+      `Style: ${lastExtracted.style || 'Custom Outfit'}\n` +
+      `Color: ${lastExtracted.color || 'Custom'}\n` +
+      `Deadline: ${lastExtracted.deadline || 'Soon'}\n` +
+      `Fulfillment: ${lastExtracted.delivery_method === 'delivery' ? 'Courier Dispatch' : 'Pick Up at Shop'}`
+    )
     : '';
 
   return (
@@ -141,7 +167,7 @@ export default function ChatWidget({ open, onClose, initialPrompt = '', currentD
             <div>
               <h3>{brandName}</h3>
               <span className="chat-panel__status">
-                <span className="status-dot" /> AI Bespoke Concierge • Online
+                <span className="status-dot" /> AI Tailor Assistant • Online
               </span>
             </div>
           </div>
@@ -158,7 +184,7 @@ export default function ChatWidget({ open, onClose, initialPrompt = '', currentD
               className={`chat-msg ${m.role === 'user' ? 'chat-msg--user' : 'chat-msg--assistant'}`}
             >
               <div className="chat-msg__bubble">
-                <p>{m.content}</p>
+                <div className="chat-msg__text">{renderFormattedText(m.content)}</div>
               </div>
             </div>
           ))}

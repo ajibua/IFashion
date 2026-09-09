@@ -2,7 +2,7 @@ import json
 import os
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -14,32 +14,41 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 
 
 def build_system_prompt(designer: Optional[Designer] = None) -> str:
-    brand = designer.brand_name if designer else "IFashion Atelier"
+    brand = designer.brand_name if designer else "IFashion Tailor Shop"
     location = f" located in {designer.location}" if designer and designer.location else ""
     delivery_note = (
-        "Available fulfillment methods: In-person walk-in / pickup at our atelier, OR delivery driver / courier dispatch."
+        "Available fulfillment methods: In-person walk-in / pickup at our shop, OR delivery driver / courier dispatch."
     )
 
-    return f"""You are the elite AI bespoke fashion concierge for {brand}{location}.
-Your mission is to welcome the client, discuss their bespoke styling needs, and gather and rigorously verify all order specifications.
+    return f"""You are the friendly AI fashion assistant for {brand}{location}.
+Your job is to welcome the customer warmly, help them order their custom clothes, and note down all their order details clearly.
 
-VERIFICATION CHECKLIST TO COLLECT:
-1. Customer Full Name
-2. Phone Number (WhatsApp / Mobile)
-3. Garment Style (e.g. Royal Agbada, Senator suit, 2-piece Kaftan, Ankara native, bespoke trousers)
-4. Fabric & Color Preference (e.g. Navy blue cashmere wool, royal wine velvet, emerald green damask)
-5. Occasion & Delivery Deadline (the specific event and the date they need it by)
-6. Measurements (chest, waist, shoulder, sleeve, trouser length, neck — if returning customer with saved measurements, warmly confirm them; if new, collect them or note if tailor will measure in-person)
-7. Fulfillment Choice:
-   - In-person atelier walk-in / pickup
-   - Delivery driver / courier dispatch (MUST collect the client's destination street address)
+CHECKLIST TO COLLECT STEP BY STEP:
+1. Customer's Name
+2. WhatsApp / Phone Number
+3. Style of outfit (e.g. Senator wear, Agbada, Kaftan, native shirt & trousers)
+4. Preferred Color and Fabric (e.g. Navy blue, white, black cashmere, linen, etc.)
+5. Occasion and when they need it (Date or Deadline)
+6. Measurements (chest, waist, shoulder, sleeve, trouser length, neck — if they have measurements, take them; if not, let them know the tailor can measure them or guide them)
+7. How they want to receive it:
+   - Pick up at our shop
+   - Delivery to their doorstep (ask for their delivery address)
 
-RULES OF INTERACTION:
-- Speak with warm, refined, high-fashion elegance.
-- Ask only 1 or 2 questions at a time so the conversation feels natural, not like an interrogation.
+TONE & RULES OF CONVERSATION:
+- Keep your English very simple, clear, respectful, and friendly.
+- AVOID big grammar, flowery vocabulary, or overly stiff words (do NOT use words like "atelier", "bespoke", "envisioning", "exquisite", "garment", "styling needs", or "interrogation").
+- Sound like a real, polite tailor assistant chatting on WhatsApp: simple, warm, and straight to the point.
+  (For example, if they say "hi you there?", reply warmly like: "Hello! Yes, I'm here. What style would you like us to sew for you today?")
+- Ask only 1 or 2 short questions at a time so the customer is not overwhelmed.
 - {delivery_note}
-- IMPORTANT: Before confirming an order, give the customer a complete and clear RECAP of all their order details (Style, Color, Measurements, Deadline, and Fulfillment method/address) and ask them explicitly to confirm.
-- Set "order_ready" to true ONLY AFTER the customer has seen the full recap and explicitly confirmed (e.g. "yes", "looks great", "confirm", "proceed").
+- IMPORTANT: Before placing the order, clearly summarize the full details to the customer. Put each item on its own new line (e.g.
+  Style: ...
+  Color: ...
+  Occasion: ...
+  Deadline: ...
+  Delivery: ...)
+  Do NOT use double asterisks like **Style:** or raw markdown stars. Just use clean, plain text with line breaks so it looks neat in chat.
+- Set "order_ready" to true ONLY AFTER the customer sees the recap and says yes, confirm, or agrees.
 
 Respond ONLY with valid JSON in this exact structure, with NO markdown code fences:
 {{
@@ -78,14 +87,14 @@ def get_genai_client(api_key: str):
     return _genai_client
 
 
-def call_gemini(system_prompt: str, history: list[dict], known_customer: dict | None) -> dict:
+async def call_gemini(system_prompt: str, history: list[dict], known_customer: dict | None) -> dict:
     """
-    Calls the Gemini API to power the multi-tenant bespoke concierge.
-    Optimized for sub-2-second latency:
+    Calls the Gemini API to power the multi-tenant bespoke concierge asynchronously.
+    Optimized for high concurrency and sub-2-second latency:
     - system_instruction: passed natively in model config for prompt caching.
     - thinking_budget=0: bypasses deep chain-of-thought delay.
     - response_mime_type="application/json": structured JSON response directly.
-    - Client caching to eliminate repeated TLS/handshake overhead.
+    - Async model generation / non-blocking HTTPX client.
     """
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
@@ -110,8 +119,8 @@ def call_gemini(system_prompt: str, history: list[dict], known_customer: dict | 
     context = system_prompt
     if known_customer:
         context += (
-            f"\n\nReturning Client Detected! Saved Profile: {json.dumps(known_customer)}.\n"
-            "Greet them warmly by name and confirm if they would like to use their previously saved measurements or update them."
+            f"\n\nReturning Customer Detected! Saved Profile: {json.dumps(known_customer)}.\n"
+            "Welcome them back warmly by name in simple words, and ask if they would like to use their saved measurements or change anything."
         )
 
     convo = "\n".join(f"{m['role'].upper()}: {m['content']}" for m in history)
@@ -120,9 +129,9 @@ def call_gemini(system_prompt: str, history: list[dict], known_customer: dict | 
     text = None
     last_error = None
 
-    # Strategy 1: google.genai SDK with native system_instruction, thinking_budget=0 & response_mime_type
+    # Strategy 1: google.genai SDK async with native system_instruction, thinking_budget=0 & response_mime_type
     client = get_genai_client(api_key)
-    if client:
+    if client and hasattr(client, "aio"):
         try:
             from google.genai import types
             config = types.GenerateContentConfig(
@@ -131,7 +140,7 @@ def call_gemini(system_prompt: str, history: list[dict], known_customer: dict | 
                 thinking_config=types.ThinkingConfig(thinking_budget=0),
                 temperature=0.3,
             )
-            response = client.models.generate_content(
+            response = await client.aio.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=user_turn,
                 config=config,
@@ -141,7 +150,7 @@ def call_gemini(system_prompt: str, history: list[dict], known_customer: dict | 
         except Exception as e:
             last_error = e
 
-    # Strategy 2: Direct HTTPX REST API fallback with system_instruction and thinkingBudget: 0
+    # Strategy 2: Direct async HTTPX REST API fallback with system_instruction and thinkingBudget: 0
     if not text:
         try:
             import httpx
@@ -161,8 +170,8 @@ def call_gemini(system_prompt: str, history: list[dict], known_customer: dict | 
                     "temperature": 0.3
                 }
             }
-            with httpx.Client(timeout=20.0) as http_client:
-                resp = http_client.post(url, json=payload)
+            async with httpx.AsyncClient(timeout=20.0) as http_client:
+                resp = await http_client.post(url, json=payload)
                 if resp.status_code == 200:
                     data = resp.json()
                     text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
@@ -187,7 +196,7 @@ def call_gemini(system_prompt: str, history: list[dict], known_customer: dict | 
 
 
 @router.post("/", response_model=schemas.ChatResponse)
-def chat(request: schemas.ChatRequest, db: Session = Depends(get_db)):
+async def chat(request: schemas.ChatRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     # Find designer if handle or ID provided
     designer = None
     if request.designer_handle:
@@ -196,7 +205,7 @@ def chat(request: schemas.ChatRequest, db: Session = Depends(get_db)):
     elif request.designer_id:
         designer = db.query(Designer).filter(Designer.id == request.designer_id).first()
 
-    # Look up returning customer if phone exists
+    # Look up returning customer if phone number exists
     known_customer = None
     if request.phone:
         query = db.query(Customer).filter(Customer.phone == request.phone)
@@ -216,28 +225,38 @@ def chat(request: schemas.ChatRequest, db: Session = Depends(get_db)):
 
     system_prompt = build_system_prompt(designer)
     history = [m.model_dump() for m in request.messages]
-    result = call_gemini(system_prompt, history, known_customer)
+    result = await call_gemini(system_prompt, history, known_customer)
 
     order_ready = result.get("order_ready", False)
     extracted = result.get("extracted") or {}
 
-    if order_ready and extracted.get("phone") and extracted.get("name"):
-        customer_phone = extracted["phone"].strip()
+    # Resolve customer phone and name robustly from extracted, request, or known profile
+    resolved_phone = extracted.get("phone") or request.phone or (known_customer.get("phone") if known_customer else None)
+    resolved_name = extracted.get("name") or (known_customer.get("name") if known_customer else "Valued Client")
+
+    if order_ready and resolved_phone:
+        customer_phone = str(resolved_phone).strip()
         customer = db.query(Customer).filter(Customer.phone == customer_phone).first()
 
         if customer:
+            if extracted.get("name") and customer.name != extracted["name"]:
+                customer.name = extracted["name"].strip()
             if extracted.get("measurements"):
-                customer.measurements = extracted["measurements"]
+                # Merge new measurements with existing
+                merged = dict(customer.measurements or {})
+                merged.update(extracted["measurements"])
+                customer.measurements = merged
             if designer and not customer.designer_id:
                 customer.designer_id = designer.id
         else:
             customer = Customer(
-                name=extracted["name"],
+                name=resolved_name.strip(),
                 phone=customer_phone,
-                measurements=extracted.get("measurements"),
+                measurements=extracted.get("measurements") or {},
                 designer_id=designer.id if designer else None,
             )
             db.add(customer)
+
         db.commit()
         db.refresh(customer)
 
@@ -250,7 +269,7 @@ def chat(request: schemas.ChatRequest, db: Session = Depends(get_db)):
         db_order = Order(
             customer_id=customer.id,
             designer_id=designer.id if designer else None,
-            style=extracted.get("style"),
+            style=extracted.get("style") or "Custom Native Wear",
             color=extracted.get("color"),
             occasion=extracted.get("occasion"),
             deadline=extracted.get("deadline"),
@@ -262,8 +281,21 @@ def chat(request: schemas.ChatRequest, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(db_order)
 
-        # Dispatch automated WhatsApp Cloud Push & Email notification to the specific designer
-        notify_new_order(customer.name, customer.phone, extracted, designer=designer)
+        # Ensure measurements from customer record are included in notification payload
+        order_notification_payload = dict(extracted)
+        if customer.measurements and not order_notification_payload.get("measurements"):
+            order_notification_payload["measurements"] = customer.measurements
+
+        # Offload WhatsApp & Email dispatch to background task to keep API response instant
+        background_tasks.add_task(
+            notify_new_order,
+            customer_name=customer.name,
+            phone=customer.phone,
+            order=order_notification_payload,
+            designer_name=designer.brand_name if designer else None,
+            designer_phone=designer.phone if designer else None,
+            designer_email=designer.email if designer else None,
+        )
 
     return schemas.ChatResponse(
         reply=result.get("reply", ""),

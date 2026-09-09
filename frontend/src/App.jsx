@@ -18,6 +18,9 @@ import {
   Scissors,
   Check,
   ChevronDown,
+  MessageCircle,
+  Copy,
+  Plus,
 } from 'lucide-react';
 import TapeDivider from './components/TapeDivider';
 import ChatWidget from './components/ChatWidget';
@@ -28,72 +31,21 @@ import './App.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
 
-const GARMENTS = [
-  'BESPOKE AGBADA',
-  'SENATOR SUITS',
-  'ROYAL KAFTAN',
-  'WIDE-LEG TROUSERS',
-  'TAILORED ANKARA',
-  'OWAMBE NATIVE WEAR',
-  'CASUAL BESPOKE',
-];
-
-const CATEGORIES = ['All Styles', 'Agbada', 'Senator Suits', 'Kaftan', 'Trousers', 'Ankara'];
-
-const GALLERY = [
-  {
-    title: 'Royal Navy Agbada Set',
-    tag: 'Agbada',
-    desc: '3-piece royal navy blue agbada with handcrafted gold embroidery and a matching fila cap. Perfect for weddings and special celebrations.',
-    image: '/images/agbada_modern.jpg',
-  },
-  {
-    title: 'Minimalist Charcoal Senator Suit',
-    tag: 'Senator Suits',
-    desc: 'Clean, fitted cut made from soft cashmere wool with neat geometric chest detailing and mandarin collar. Great for church, meetings, and formal dinners.',
-    image: '/images/senator_modern.jpg',
-  },
-  {
-    title: 'Champagne Silk Kaftan',
-    tag: 'Kaftan',
-    desc: 'Luxurious 2-piece native wear in cream silk brocade with intricate geometric neckline embroidery and tailored trousers.',
-    image: '/images/kaftan_modern.jpg',
-  },
-  {
-    title: 'Contemporary Ankara & Wide-Leg Trousers',
-    tag: 'Trousers',
-    desc: 'Fashion-week grade geometric Ankara native jacket paired with relaxed pleated navy wide-leg trousers.',
-    image: '/images/ankara_modern.jpg',
-  },
-  {
-    title: 'Tailored Ankara 2-Piece',
-    tag: 'Ankara',
-    desc: 'Bespoke matching emerald and gold geometric Ankara long-sleeve tunic and slim-cut trousers sewn to your exact fit.',
-    image: '/images/ankara_set.jpg',
-  },
-  {
-    title: 'Grand Velvet Agbada',
-    tag: 'Agbada',
-    desc: 'Rich wine-red velvet Agbada with bold gold thread patterns. Designed to make you look royal at any big event.',
-    image: '/images/agbada_wine.jpg',
-  },
-];
-
 const STEPS = [
   {
     mark: '01',
-    title: 'Tell Us What You Want',
-    body: 'Chat with our friendly assistant. Say the style you want (Agbada, Senator, Kaftan), pick your color, and tell us when you need it.',
+    title: 'Choose a Tailor or Style',
+    body: 'Browse verified tailors on IFashion, or chat with our assistant to pick your style (Agbada, Senator, Kaftan), color, and target date.',
   },
   {
     mark: '02',
-    title: 'Save Your Size Once',
-    body: 'Share your measurements once. Next time you order, just enter your phone number and we remember your exact size automatically.',
+    title: 'Save Your Measurements Once',
+    body: 'Enter your sizes once. Next time you order, your phone number automatically loads your saved body measurements for any tailor.',
   },
   {
     mark: '03',
-    title: 'Pickup or Bike Delivery',
-    body: 'Your tailor receives your order on WhatsApp, sews it with care, and gives it to you at their shop or sends it to your house by dispatch rider.',
+    title: 'Pickup or Doorstep Delivery',
+    body: 'Your tailor receives your order on WhatsApp, cuts, sews, and dispatches your outfit directly to your door or prepares it for pickup.',
   },
 ];
 
@@ -115,23 +67,9 @@ const TRAITS = [
   },
 ];
 
-function Marquee() {
-  const items = [...GARMENTS, ...GARMENTS];
-  return (
-    <div className="marquee-viewport">
-      <div className="marquee-track">
-        {items.map((item, i) => (
-          <span className="marquee-item" key={i}>
-            {item}
-            <span className="marquee-dot" aria-hidden="true">&#9670;</span>
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
+function Header({ activeDesigner, loggedInDesigner, onOrderClick, onDesignerPortalClick, onRegisterClick }) {
+  const isOwner = loggedInDesigner && activeDesigner && loggedInDesigner.id === activeDesigner.id;
 
-function Header({ activeDesigner, loggedInDesigner, onOrderClick, onDesignerPortalClick }) {
   return (
     <div className="fixed-header-wrapper">
       {activeDesigner && (
@@ -139,10 +77,10 @@ function Header({ activeDesigner, loggedInDesigner, onOrderClick, onDesignerPort
           <div className="designer-atelier-banner__content">
             <div className="designer-atelier-banner__left">
               <span className="designer-atelier-banner__badge">
-                <Store size={12} /> Official Storefront
+                <Store size={12} /> Official Tailor Shop
               </span>
               <span>
-                Ordering directly with <strong>{activeDesigner.brand_name}</strong>
+                Ordering directly from <strong>{activeDesigner.brand_name}</strong>
                 {activeDesigner.location ? ` (${activeDesigner.location})` : ''}
               </span>
             </div>
@@ -157,7 +95,14 @@ function Header({ activeDesigner, loggedInDesigner, onOrderClick, onDesignerPort
         <div className="nav__brand">
           <a href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
             <span className="nav__logo-mark">✦</span>
-            <span className="nav__logo">IFASHION</span>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span className="nav__logo">IFASHION</span>
+              {!activeDesigner && (
+                <span style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--cognac)', letterSpacing: '0.08em', marginTop: -3 }}>
+                  TAILOR OPERATING PLATFORM
+                </span>
+              )}
+            </div>
           </a>
           {activeDesigner && (
             <span className="nav__atelier-tag">
@@ -167,20 +112,47 @@ function Header({ activeDesigner, loggedInDesigner, onOrderClick, onDesignerPort
         </div>
 
         <nav className="nav__links">
-          <a href="#work">Styles</a>
-          <a href="#how">How It Works</a>
-          <a href="#measurements">Fit Guide</a>
-          <a href="#about">About</a>
-          <a href="#traits">Why Us</a>
+          {!activeDesigner ? (
+            <>
+              <a href="#tailors">Find Tailors</a>
+              <a href="#platform">Platform</a>
+              <a href="#measurements">Fit Studio</a>
+              <a href="#how">How It Works</a>
+            </>
+          ) : (
+            <>
+              <a href="#collection">Collection</a>
+              <a href="#measurements">Fit Guide</a>
+              <a href="#how">How It Works</a>
+              <a href="#about">About</a>
+            </>
+          )}
         </nav>
 
         <div className="nav__actions">
-          <button className="btn btn--ghost btn--small" onClick={onDesignerPortalClick}>
-            <ShieldCheck size={15} />
-            {loggedInDesigner ? `${loggedInDesigner.brand_name}` : 'Tailor Login'}
-          </button>
+          {/* If the logged-in tailor is visiting their own shop page, show Manage Shop */}
+          {isOwner && (
+            <button className="btn btn--ghost btn--small" onClick={onDesignerPortalClick} title="Open your tailor dashboard">
+              <ShieldCheck size={15} />
+              Manage Shop
+            </button>
+          )}
+
+          {/* If on main homepage (no active tailor shop selected), show Tailor Login or Tailor Name */}
+          {!activeDesigner && (
+            <>
+              <button className="btn btn--ghost btn--small" onClick={onDesignerPortalClick}>
+                <ShieldCheck size={15} />
+                {loggedInDesigner ? `${loggedInDesigner.brand_name}` : 'Tailor Login'}
+              </button>
+              <button className="btn btn--outline btn--small" onClick={onRegisterClick}>
+                Register Shop
+              </button>
+            </>
+          )}
+
           <button className="btn btn--gold btn--small" onClick={() => onOrderClick('')}>
-            Order Outfit
+            Order Clothes
           </button>
         </div>
       </header>
@@ -189,166 +161,415 @@ function Header({ activeDesigner, loggedInDesigner, onOrderClick, onDesignerPort
 }
 
 function Hero({ activeDesigner, onOrderClick, onRegisterClick }) {
-  const brandSub = activeDesigner
-    ? activeDesigner.bio ||
-    `Welcome to ${activeDesigner.brand_name}! Order native wear sewn to your exact size. Our smart assistant helps you pick your style, records your size, and notifies the tailor on WhatsApp.`
-    : 'Get clothes sewn to your exact body size — without any stress. Choose your style, save your size, and get it delivered to your home or pick it up at the shop.';
+  if (activeDesigner) {
+    return (
+      <section className="hero hero--has-banner hero--tailor">
+        <motion.div
+          className="hero__content--tailor"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+        >
+          <div className="hero__badge">
+            <Store size={13} />
+            <span>Official Tailor Shop</span>
+          </div>
 
+          <h1 className="hero__headline">
+            Handcrafted Native Outfits by <br />
+            <span className="text-gold italic">{activeDesigner.brand_name}</span>
+          </h1>
+
+          {activeDesigner.location && (
+            <div
+              className="hero-location-pill"
+              style={{
+                margin: '10px auto 18px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '5px 16px',
+                borderRadius: 999,
+                background: 'rgba(179, 112, 42, 0.1)',
+                color: 'var(--cognac)',
+                fontWeight: 600,
+                fontSize: '0.86rem',
+              }}
+            >
+              <MapPin size={14} />
+              <span>{activeDesigner.location}</span>
+            </div>
+          )}
+
+          <p className="hero__sub" style={{ maxWidth: 660, margin: '0 auto 28px' }}>
+            {activeDesigner.bio ||
+              `Welcome to ${activeDesigner.brand_name}! Order native wear sewn to your exact body measurements with direct WhatsApp updates and doorstep delivery.`}
+          </p>
+
+          <div className="hero__actions" style={{ justifyContent: 'center' }}>
+            <button
+              className="btn btn--gold"
+              onClick={() => onOrderClick(`I want to order a custom outfit from ${activeDesigner.brand_name}`)}
+            >
+              <Sparkles size={16} /> Order from {activeDesigner.brand_name}
+            </button>
+            <a href="#collection" className="btn btn--outline">
+              View Work
+            </a>
+          </div>
+        </motion.div>
+      </section>
+    );
+  }
+
+  // Platform Homepage Hero: Centered, spacious, clean, with frosted platform pillars
   return (
-    <section className={`hero ${activeDesigner ? 'hero--has-banner' : ''}`}>
-
-
+    <section className="hero hero--platform">
       <motion.div
-        className="hero__content"
+        className="hero__content--centered"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, ease: 'easeOut' }}
       >
         <div className="hero__badge">
           <Sparkles size={13} />
-          <span>{activeDesigner ? `Official Tailor: ${activeDesigner.brand_name}` : 'Custom Native Clothes Made For You'}</span>
+          <span>Nigeria's Digital Tailoring Platform</span>
         </div>
 
-        <h1 className="hero__headline">
-          {activeDesigner ? (
-            <>
-              {activeDesigner.brand_name}. <em>Sewn to your size.</em>
-            </>
-          ) : (
-            <>
-              Clothes sewn to your fit. <em>Neat, sharp, on time.</em>
-            </>
-          )}
+        <h1 className="hero__headline hero__title--platform">
+          Where Master Tailors &amp; <br />
+          <span className="text-gold italic">Stylish Clients Connect.</span>
         </h1>
 
-        <p className="hero__sub">{brandSub}</p>
+        <p className="hero__sub hero__sub--centered">
+          An operating platform connecting verified Nigerian fashion designers with stylish clients.
+          Save your measurements once, eliminate paper notebooks, and automate customer orders via WhatsApp.
+        </p>
 
-        <div className="hero__actions">
-          <button className="btn btn--gold" onClick={() => onOrderClick('')}>
-            Start Your Order &rarr;
+        <div className="hero__actions hero__actions--centered">
+          <a href="#tailors" className="btn btn--gold">
+            <Store size={16} /> Explore Tailor Shops
+          </a>
+          <button className="btn btn--outline" onClick={onRegisterClick}>
+            <Scissors size={16} /> Register as a Tailor
           </button>
-          {!activeDesigner && (
-            <button className="btn btn--outline" onClick={onRegisterClick}>
-              <Store size={15} /> Are you a tailor? Join here
-            </button>
-          )}
-          {activeDesigner?.location && (
-            <span className="hero-location-pill">
-              <MapPin size={13} /> {activeDesigner.location}
-            </span>
-          )}
-        </div>
-
-        {/* Quick Trust Highlights for everyday people */}
-        <div className="hero-trust-strip">
-          <div className="trust-item">
-            <CheckCircle2 size={15} className="text-gold" />
-            <span>Exact Body Fit</span>
-          </div>
-          <div className="trust-item">
-            <Truck size={15} className="text-gold" />
-            <span>Pickup or Bike Delivery</span>
-          </div>
-          <div className="trust-item">
-            <Clock size={15} className="text-gold" />
-            <span>Orders Sent to WhatsApp and Emails.</span>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Spotlight Card */}
-      <motion.div
-        className="hero__card glass"
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.8, delay: 0.15, ease: 'easeOut' }}
-      >
-        <div className="hero__card-image-wrap">
-          <img src="/images/agbada_modern.jpg" alt="Signature Royal Agbada" className="hero__card-image" />
-          <span className="hero__card-badge">✦ Top Pick for Owambes</span>
-        </div>
-        <div className="hero__card-info">
-          <div>
-            <h3>{activeDesigner ? `${activeDesigner.brand_name} Agbada` : 'Royal Navy Agbada'}</h3>
-            <p>100% Quality Fabric & Metallic Gold Details</p>
-          </div>
-          <button
-            className="btn btn--gold btn--small"
-            onClick={() => onOrderClick(`I want to order the Royal Navy Agbada from ${activeDesigner?.brand_name || 'your shop'}`)}
-          >
-            Order This Look
+          <button className="btn btn--ghost" onClick={() => onOrderClick('')}>
+            <Sparkles size={16} /> Order an Outfit
           </button>
+        </div>
+
+        {/* Executive Frosted Glass Platform Strip */}
+        <div className="platform-glass-strip">
+          <div className="platform-pill-item">
+            <div className="platform-pill-icon">
+              <Store size={20} />
+            </div>
+            <div>
+              <strong>Verified Workshops</strong>
+              <span>Real physical shops across Nigeria</span>
+            </div>
+          </div>
+
+          <div className="platform-pill-divider" />
+
+          <div className="platform-pill-item">
+            <div className="platform-pill-icon">
+              <Ruler size={20} />
+            </div>
+            <div>
+              <strong>Digital Measurement Book</strong>
+              <span>Save sizes once, zero paper notebooks</span>
+            </div>
+          </div>
+
+          <div className="platform-pill-divider" />
+
+          <div className="platform-pill-item">
+            <div className="platform-pill-icon">
+              <MessageCircle size={20} />
+            </div>
+            <div>
+              <strong>WhatsApp Workflows</strong>
+              <span>Live status alerts to client &amp; tailor</span>
+            </div>
+          </div>
         </div>
       </motion.div>
     </section>
   );
 }
 
-function Gallery({ onOrderClick }) {
-  const [selectedCategory, setSelectedCategory] = useState('All Styles');
-
-  const filteredItems =
-    selectedCategory === 'All Styles'
-      ? GALLERY
-      : GALLERY.filter((item) => item.tag === selectedCategory);
+function RoleSwitcherSection({ onOrderClick, onRegisterClick }) {
+  const [activeRole, setActiveRole] = useState('clients'); // 'clients' | 'tailors'
 
   return (
-    <section className="gallery" id="work">
-      <div className="section-header">
-        <span className="eyebrow">Styles You Can Order</span>
-        <h2 className="section-title">Popular Native Wear</h2>
+    <section className="role-switcher-section" id="platform">
+      <div className="section-header" style={{ marginBottom: 24 }}>
+        <span className="eyebrow">Two Sides • One Integrated Platform</span>
+        <h2 className="section-title">An Operating System for African Fashion</h2>
         <p className="section-sub">
-          Every piece is sewn to your exact body measurements, carefully finished, and delivered looking neat.
+          IFashion bridges the gap between stylish clients who want dependable native wear and master tailors seeking modern software to grow.
         </p>
       </div>
 
-      {/* Interactive Category Filter Pills */}
-      <div className="gallery-filter-bar">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            className={`gallery-filter-btn ${selectedCategory === cat ? 'gallery-filter-btn--active' : ''}`}
-            onClick={() => setSelectedCategory(cat)}
-          >
-            {cat}
-          </button>
-        ))}
+      <div className="role-switcher-container">
+        <button
+          className={`role-switch-btn ${activeRole === 'clients' ? 'active' : ''}`}
+          onClick={() => setActiveRole('clients')}
+        >
+          <Sparkles size={16} className="text-gold" />
+          <span>For Clients Looking for Outfits</span>
+        </button>
+        <button
+          className={`role-switch-btn ${activeRole === 'tailors' ? 'active' : ''}`}
+          onClick={() => setActiveRole('tailors')}
+        >
+          <Scissors size={16} className="text-gold" />
+          <span>For Tailors & Fashion Designers</span>
+        </button>
       </div>
 
-      <div className="gallery__grid">
-        <AnimatePresence mode="popLayout">
-          {filteredItems.map((piece, i) => (
-            <motion.div
-              layout
-              className="gallery__card glass"
-              key={piece.title}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.92 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="gallery__card-image-wrap">
-                <img src={piece.image} alt={piece.title} className="gallery__card-img" />
-                <div className="gallery__card-overlay">
-                  <button
-                    className="gallery__card-btn"
-                    onClick={() => onOrderClick(`I want to order the ${piece.title}`)}
-                  >
-                    Order This Style &rarr;
-                  </button>
-                </div>
+      <div className="role-features-grid">
+        {activeRole === 'clients' ? (
+          <>
+            <div className="role-feature-card">
+              <div className="role-feature-icon-box">
+                <Store size={22} />
               </div>
-              <div className="gallery__card-body">
-                <div className="gallery__card-meta">
-                  <span className="gallery__card-tag">{piece.tag}</span>
-                </div>
-                <h3>{piece.title}</h3>
-                <p className="gallery__card-desc">{piece.desc}</p>
+              <h3>Verified Tailor Directory</h3>
+              <p>
+                Browse verified native tailors in your state. Inspect real photos of their sewn work, workshop locations, and specialties before trusting them with your expensive fabrics.
+              </p>
+            </div>
+
+            <div className="role-feature-card">
+              <div className="role-feature-icon-box">
+                <Ruler size={22} />
               </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+              <h3>Save Your Sizes Once</h3>
+              <p>
+                Never stand for a measurement tape every single time you want new clothes. Your sizes are stored securely in your digital profile so any tailor can sew to your exact fit.
+              </p>
+            </div>
+
+            <div className="role-feature-card">
+              <div className="role-feature-icon-box">
+                <Truck size={22} />
+              </div>
+              <h3>WhatsApp Order Tracking</h3>
+              <p>
+                Get real-time updates as your outfit moves from measuring to cutting, sewing, and doorstep bike delivery. Zero stories, zero unpicked calls.
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="role-feature-card">
+              <div className="role-feature-icon-box">
+                <ExternalLink size={22} />
+              </div>
+              <h3>Your Official Shop Link</h3>
+              <p>
+                Get a clean link (e.g. ifashion.ng/?designer=yourname) to put on your WhatsApp Status, Instagram, and TikTok bio. Clients can browse and order from you 24/7.
+              </p>
+            </div>
+
+            <div className="role-feature-card">
+              <div className="role-feature-icon-box">
+                <ShieldCheck size={22} />
+              </div>
+              <h3>Digital Measurement Book</h3>
+              <p>
+                Replace old lost paper notebooks forever. Look up any client's chest, waist, and length in 2 seconds right from your phone by typing their phone number.
+              </p>
+            </div>
+
+            <div className="role-feature-card">
+              <div className="role-feature-icon-box">
+                <Clock size={22} />
+              </div>
+              <h3>Instant WhatsApp Alerts</h3>
+              <p>
+                When a client places an order, you instantly receive an automated WhatsApp notification and email summary with their style, color, deadline, and sizes.
+              </p>
+            </div>
+          </>
+        )}
       </div>
+    </section>
+  );
+}
+
+function TailorDirectory({ designers, loading, onRegisterClick }) {
+  return (
+    <section className="tailor-directory-section" id="tailors">
+      <div className="section-header">
+        <span className="eyebrow">Discover Workshops</span>
+        <h2 className="section-title">Verified Tailor Shops on IFashion</h2>
+        <p className="section-sub">
+          Order custom native wear directly from verified fashion designers and workshops. Click any tailor to view their shop and designs.
+        </p>
+      </div>
+
+      <div className="tailor-directory-grid">
+        {designers.map((designer) => (
+          <div className="tailor-shop-card" key={designer.id}>
+            <div>
+              <div className="tailor-shop-card__head">
+                <div className="tailor-avatar-circle">
+                  <Scissors size={22} />
+                </div>
+                <span className="tailor-verified-pill">
+                  <CheckCircle2 size={12} /> Verified Shop
+                </span>
+              </div>
+
+              <h3 className="tailor-shop-card__title">{designer.brand_name}</h3>
+
+              <div className="tailor-location-badge">
+                <MapPin size={13} className="text-gold" />
+                <span>{designer.location || 'Nigeria'}</span>
+              </div>
+
+              <p className="tailor-shop-card__bio">
+                {designer.bio || 'Master tailor specializing in clean custom Senator suits, Agbada, and native wear.'}
+              </p>
+            </div>
+
+            <div>
+              <div className="tailor-tags-row" style={{ marginBottom: 16 }}>
+                <span className="tailor-feature-pill">🏬 Shop Pickup</span>
+                <span className="tailor-feature-pill">🛵 Courier Delivery</span>
+                {designer.portfolio && designer.portfolio.length > 0 && (
+                  <span className="tailor-feature-pill text-gold">✦ {designer.portfolio.length} Custom Styles</span>
+                )}
+              </div>
+
+              <a
+                href={`/?designer=${designer.handle}`}
+                className="tailor-shop-card__action"
+              >
+                <span>Visit Storefront & Order</span>
+                <ArrowRight size={15} />
+              </a>
+            </div>
+          </div>
+        ))}
+
+        {/* Tailor Invitation Card */}
+        <div className="tailor-invite-card">
+          <div>
+            <span className="admin-badge" style={{ background: 'rgba(179, 112, 42, 0.25)', color: '#CFA468' }}>
+              ✦ For Tailors & Designers
+            </span>
+            <h3>Are You a Tailor?</h3>
+            <p>
+              Join IFashion today. Get your verified shop link, receive orders directly to WhatsApp, and digitize your customer sizes in under 60 seconds.
+            </p>
+          </div>
+
+          <button className="tailor-invite-btn" onClick={onRegisterClick}>
+            <Store size={16} />
+            <span>Register Your Shop Link</span>
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TailorStorefrontStyles({ activeDesigner, isOwner, onOrderClick, onOpenDashboard }) {
+  if (!activeDesigner) return null;
+
+  const portfolio = activeDesigner.portfolio || [];
+  const hasItems = portfolio.length > 0;
+
+  return (
+    <section className="gallery" id="collection">
+      <div className="section-header">
+        <span className="eyebrow">Work Showcase</span>
+        <h2 className="section-title">
+          {activeDesigner.brand_name}’s Outfits
+        </h2>
+        <p className="section-sub">
+          {hasItems
+            ? `Real outfits sewn and finished by ${activeDesigner.brand_name}. Choose any style to get started.`
+            : `Handcrafted native wear sewn to your exact body measurements.`}
+        </p>
+
+        {isOwner && (
+          <div style={{ marginTop: 14 }}>
+            <button className="btn btn--outline btn--small" onClick={onOpenDashboard}>
+              <Plus size={14} className="text-gold" /> Upload Your Finished Outfits
+            </button>
+          </div>
+        )}
+      </div>
+
+      {hasItems ? (
+        <div className="gallery__grid">
+          <AnimatePresence mode="popLayout">
+            {portfolio.map((piece, i) => (
+              <motion.div
+                layout
+                className="gallery__card glass"
+                key={piece.id || i}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.92 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className="gallery__card-image-wrap">
+                  <img
+                    src={piece.image}
+                    alt={piece.title}
+                    className="gallery__card-img"
+                  />
+                  <div className="gallery__card-overlay">
+                    <button
+                      className="gallery__card-btn"
+                      onClick={() => onOrderClick(`I want to order ${piece.title} from ${activeDesigner.brand_name}`)}
+                    >
+                      Order This Style &rarr;
+                    </button>
+                  </div>
+                </div>
+                <div className="gallery__card-body">
+                  <div className="gallery__card-meta">
+                    <span className="gallery__card-tag">{piece.tag || 'Custom Native'}</span>
+                  </div>
+                  <h3>{piece.title}</h3>
+                  {piece.desc && <p>{piece.desc}</p>}
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      ) : (
+        <div className="storefront-empty-state glass">
+          <div className="storefront-empty-icon">
+            <Scissors size={28} />
+          </div>
+          <h3>Custom Made-to-Measure Outfits</h3>
+          <p>
+            {activeDesigner.brand_name} specializes in custom Agbada, Senator suits, Kaftans, and traditional native wear.
+            Every piece is made from scratch to your exact measurements with premium finishing.
+          </p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginTop: 12 }}>
+            <button
+              className="btn btn--gold"
+              onClick={() => onOrderClick(`I want to order a custom outfit from ${activeDesigner.brand_name}`)}
+            >
+              <Sparkles size={15} /> Order Custom Outfit
+            </button>
+            {isOwner && (
+              <button className="btn btn--outline" onClick={onOpenDashboard}>
+                <Plus size={15} /> Add Styles to Your Shop
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -473,6 +694,9 @@ export default function App() {
   const [activeDesigner, setActiveDesigner] = useState(null);
   const [designerLoading, setDesignerLoading] = useState(false);
 
+  const [designers, setDesigners] = useState([]);
+  const [designersLoading, setDesignersLoading] = useState(false);
+
   useEffect(() => {
     // Check local storage for logged-in designer
     const savedDesigner = localStorage.getItem('ifashion_designer');
@@ -483,6 +707,9 @@ export default function App() {
         localStorage.removeItem('ifashion_designer');
       }
     }
+
+    // Load live designers directory
+    fetchDesigners();
 
     // Detect designer handle from URL query (?designer=handle) or pathname (/@handle)
     const params = new URLSearchParams(window.location.search);
@@ -495,6 +722,21 @@ export default function App() {
       loadDesignerProfile(handle.trim().toLowerCase());
     }
   }, []);
+
+  async function fetchDesigners() {
+    setDesignersLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/auth/designers`);
+      if (res.ok) {
+        const data = await res.json();
+        setDesigners(data);
+      }
+    } catch (err) {
+      console.error('Failed to load designers list', err);
+    } finally {
+      setDesignersLoading(false);
+    }
+  }
 
   async function loadDesignerProfile(handle) {
     setDesignerLoading(true);
@@ -549,6 +791,7 @@ export default function App() {
         loggedInDesigner={loggedInDesigner}
         onOrderClick={handleOpenOrder}
         onDesignerPortalClick={handleDesignerPortalClick}
+        onRegisterClick={handleRegisterClick}
       />
 
       <Hero
@@ -557,8 +800,31 @@ export default function App() {
         onRegisterClick={handleRegisterClick}
       />
 
-      <Marquee />
-      <Gallery onOrderClick={handleOpenOrder} />
+      {/* Main Platform Modules (Only shown on the main platform homepage) */}
+      {!activeDesigner && (
+        <>
+          <TailorDirectory
+            designers={designers}
+            loading={designersLoading}
+            onRegisterClick={handleRegisterClick}
+          />
+
+          <RoleSwitcherSection
+            onOrderClick={handleOpenOrder}
+            onRegisterClick={handleRegisterClick}
+          />
+        </>
+      )}
+
+      {/* Tailor Custom Outfits (Only shown when visiting a specific tailor's storefront) */}
+      {activeDesigner && (
+        <TailorStorefrontStyles
+          activeDesigner={activeDesigner}
+          isOwner={Boolean(loggedInDesigner && activeDesigner && loggedInDesigner.id === activeDesigner.id)}
+          onOrderClick={handleOpenOrder}
+          onOpenDashboard={() => setAdminOpen(true)}
+        />
+      )}
 
       {/* Interactive How We Measure Fit Section */}
       <div id="measurements">
@@ -566,7 +832,7 @@ export default function App() {
       </div>
 
       <Steps />
-      <About activeDesigner={activeDesigner} />
+      {activeDesigner && <About activeDesigner={activeDesigner} />}
       <Traits />
       <CTA
         activeDesigner={activeDesigner}
@@ -591,7 +857,7 @@ export default function App() {
         <span>Order Outfit</span>
       </motion.button>
 
-      {/* Refined AI Bespoke Order Concierge */}
+      {/* AI Tailor Order Assistant */}
       <ChatWidget
         open={chatOpen}
         onClose={() => setChatOpen(false)}
